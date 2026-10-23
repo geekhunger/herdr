@@ -230,6 +230,7 @@ pub(super) fn render_mode_bar(
 }
 
 pub(super) struct ShellRenderState<'a> {
+    pub(super) schedules: &'a super::schedules::Schedules,
     pub(super) machine_diagnostics: &'a super::machine_diagnostics::MachineDiagnostics,
     pub(super) endpoints: &'a [ClientShellEndpoint],
     pub(super) active_endpoint_id: &'a ClientEndpointId,
@@ -268,11 +269,15 @@ pub(super) fn render_shell(
         );
     }
     if layout.sidebar.width > 0 {
+        let (sidebar_area, schedules_area) = super::schedules::sections(
+            layout.sidebar,
+            state.sidebar_collapsed || !state.schedules.visible(),
+        );
         if state.endpoints.len() > 1 {
             if state.sidebar_collapsed {
                 super::endpoint_sidebar::render_collapsed(
                     buffer,
-                    layout.sidebar,
+                    sidebar_area,
                     config,
                     &mut state,
                     &mut hits,
@@ -280,7 +285,7 @@ pub(super) fn render_shell(
             } else {
                 super::endpoint_sidebar::render_expanded(
                     buffer,
-                    layout.sidebar,
+                    sidebar_area,
                     Some(snapshot),
                     config,
                     &mut state,
@@ -290,7 +295,7 @@ pub(super) fn render_shell(
         } else if state.sidebar_collapsed {
             render_collapsed_sidebar(
                 buffer,
-                layout.sidebar,
+                sidebar_area,
                 snapshot,
                 config,
                 state
@@ -301,13 +306,14 @@ pub(super) fn render_shell(
         } else {
             render_sidebar(
                 buffer,
-                layout.sidebar,
+                sidebar_area,
                 snapshot,
                 config,
                 &mut state,
                 &mut hits,
             );
         }
+        super::schedules::render(buffer, schedules_area, state.schedules, &config.palette);
     }
     if layout.tab_bar.height > 0 {
         render_tab_bar(

@@ -1,0 +1,52 @@
+onboarding = false
+
+[theme]
+name = "vesper"
+auto_switch = false
+
+[keys]
+prefix = "ctrl+f"
+close_tab = "prefix+ctrl+w"
+new_tab = "prefix+ctrl+t"
+new_workspace = "prefix+ctrl+n"
+close_workspace = "prefix+ctrl+q"
+previous_tab = ["prefix+p", "prefix+left"]
+next_tab = ["prefix+n", "prefix+right"]
+previous_workspace = "prefix+up"
+next_workspace = "prefix+down"
+goto = "prefix+f"
+workspace_picker = ""
+switch_tab = ""
+
+[[keys.command]]
+key = "prefix+t"
+type = "popup"
+command = "@PICKER@"
+description = "Tab auswählen: Pfeiltasten oder Zahl"
+width = 60
+height = 16
+
+[[keys.command]]
+key = "prefix+w"
+type = "popup"
+command = "@PICKER@ workspace"
+description = "Workspace auswählen: Pfeiltasten oder Zahl"
+width = 60
+height = 16
+
+[[keys.command]]
+key = "prefix+a"
+type = "popup"
+command = "@PICKER@ agent"
+description = "Agent auswählen: Pfeiltasten oder Zahl"
+width = 72
+height = 16
+
+# herdr-schedules-manager
+[[keys.command]]
+key = "prefix+c"
+type = "popup"
+command = "@SCHEDULES@ ui"
+description = "Schedules: Zeitplan, Prompt und Ergebnisse"
+width = "90%"
+height = "90%"

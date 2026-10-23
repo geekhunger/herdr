@@ -35,6 +35,10 @@ impl ClientShellState {
         } else {
             Rect::new(0, 1, cols, rows.saturating_sub(2))
         };
+        let (sidebar, schedules_area) = super::schedules::sections(
+            sidebar,
+            self.sidebar_collapsed || layout.sidebar.width == 0 || !self.schedules.visible(),
+        );
         let valid_navigation_target = self.mode == ClientShellMode::Navigate
             && self
                 .navigate_workspace_id
@@ -55,6 +59,7 @@ impl ClientShellState {
                     == Some(ClientEndpointStatus::Online)
         });
         let mut render_state = render::ShellRenderState {
+            schedules: &self.schedules,
             machine_diagnostics: &self.machine_diagnostics,
             endpoints: &self.endpoints,
             active_endpoint_id: &self.active_endpoint_id,
@@ -97,6 +102,12 @@ impl ClientShellState {
                 &mut self.hits,
             );
         }
+        super::schedules::render(
+            &mut buffer,
+            schedules_area,
+            &self.schedules,
+            &self.config.palette,
+        );
         if !self.config.mouse_capture {
             self.hits = ShellHitMap::default();
         }
@@ -211,6 +222,7 @@ impl ClientShellState {
             snapshot,
             &self.config,
             render::ShellRenderState {
+                schedules: &self.schedules,
                 machine_diagnostics: &self.machine_diagnostics,
                 endpoints: &self.endpoints,
                 active_endpoint_id: &self.active_endpoint_id,

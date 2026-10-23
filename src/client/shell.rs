@@ -29,6 +29,7 @@ mod notifications;
 mod overlay_input;
 mod preferences;
 mod render;
+mod schedules;
 mod scroll;
 mod settings;
 mod state;

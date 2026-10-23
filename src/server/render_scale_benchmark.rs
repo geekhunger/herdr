@@ -615,6 +615,31 @@ async fn render_scale_profile() {
     print_surface_damage_profiles();
 }
 
+#[tokio::test(flavor = "current_thread")]
+#[ignore = "manual local schedules sidebar scaling comparison"]
+async fn schedules_sidebar_scale_profile() {
+    for (label, build) in [
+        (
+            "background workspaces",
+            workspaces as fn(usize) -> Vec<Workspace>,
+        ),
+        ("active panes", active_panes as fn(usize) -> Vec<Workspace>),
+    ] {
+        for count in [1, 15] {
+            let baseline = profile(build, count);
+            let mut enabled = RenderPipeline::new(build(count));
+            enabled.client.tick_schedules(Instant::now());
+            let enabled = profile_pipeline(enabled);
+            println!(
+                "{label} count={count} client median baseline={}us schedules={}us delta={}us",
+                baseline.client.median_us,
+                enabled.client.median_us,
+                enabled.client.median_us as i128 - baseline.client.median_us as i128
+            );
+        }
+    }
+}
+
 /// Dirty-row collection while output scrolls a large pane, the host's hot path
 /// for streaming agents and build logs.
 #[tokio::test(flavor = "current_thread")]
