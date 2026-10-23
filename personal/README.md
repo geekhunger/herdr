@@ -6,9 +6,9 @@ Enthalten sind die native Schedule-Übersicht unter Agents, der eigene Scheduler
 
 ## Auf eine Codex-Antwort antworten
 
-Text in der Codex-Ausgabe mit der Maus markieren, rechtsklicken und **Antworten** wählen. Herdr fügt die Auswahl als Markdown-Zitat in die Eingabe desselben Codex-Agenten ein. Darunter die eigene Antwort schreiben und selbst absenden. Der Menüpunkt schickt keine Nachricht automatisch ab und liest nicht aus der Zwischenablage. Auch eine bereits automatisch kopierte Auswahl bleibt dafür verfügbar. Ein Pane-Wechsel, eine neue Markierung oder weitere Eingabe verwirft den vorherigen Zitatbezug. Der Menüpunkt erscheint für eine Auswahl im fokussierten, als Codex erkannten Agenten; in einem Shell-Pane wird kein Zitat eingefügt.
+Text in der Codex-Ausgabe mit der Maus markieren, rechtsklicken und **Reply** wählen. Herdr fügt die Auswahl als Markdown-Zitat in die Eingabe desselben Codex-Agenten ein. Darunter die eigene Antwort schreiben und selbst absenden. Der Menüpunkt schickt keine Nachricht automatisch ab und liest nicht aus der Zwischenablage. Auch eine bereits automatisch kopierte Auswahl bleibt dafür verfügbar. Ein Pane-Wechsel, eine neue Markierung oder weitere Eingabe verwirft den vorherigen Zitatbezug. Der Menüpunkt erscheint für eine Auswahl im fokussierten, als Codex erkannten Agenten; in einem Shell-Pane wird kein Zitat eingefügt.
 
-Die Tastaturvariante bleibt Ctrl+F → `[` → Pfeiltasten → Leertaste zum Markieren → Enter zum Kopieren; anschließend mit dem Einfügebefehl des Terminals zitieren und kommentieren.
+Die Tastaturvariante bleibt Ctrl+F → `y` → Pfeiltasten zum Bewegen, Shift+↑/↓ zum vorherigen/nächsten Block → Leertaste zum Markieren → Enter zum Kopieren; anschließend mit dem Einfügebefehl des Terminals zitieren und kommentieren.
 
 In der Codex-Eingabe erzeugt **Ctrl+Return** eine neue Zeile; Return allein sendet ab. Ctrl+J bleibt als Reserve verfügbar. Der Installer übernimmt die Belegung nach `tui.keymap.editor.insert_newline` und erhält die übrigen Codex-Einstellungen.
 
@@ -53,6 +53,7 @@ Prefix ist **Ctrl+F**. Anschließend die Taste ohne festgehaltenen Prefix drück
 
 | Folge nach Ctrl+F | Funktion |
 |---|---|
+| y | Kopier- und Auswahlmodus (Yank) |
 | Ctrl+W | Tab schließen |
 | Ctrl+T | Tab anlegen |
 | Ctrl+N | Workspace anlegen |

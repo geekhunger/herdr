@@ -146,6 +146,20 @@ impl ClientShellState {
                 self.move_copy_cursor(0, -1, outcome);
                 return;
             }
+            KeyCode::Down if key.modifiers == KeyModifiers::SHIFT => {
+                self.request_copy_motion(
+                    crate::api::schema::PaneCopyMotion::NextParagraph,
+                    outcome,
+                );
+                return;
+            }
+            KeyCode::Up if key.modifiers == KeyModifiers::SHIFT => {
+                self.request_copy_motion(
+                    crate::api::schema::PaneCopyMotion::PreviousParagraph,
+                    outcome,
+                );
+                return;
+            }
             KeyCode::Down => {
                 self.move_copy_cursor(1, 0, outcome);
                 return;
@@ -250,13 +264,6 @@ impl ClientShellState {
             ),
             'E' => self
                 .request_copy_motion(crate::api::schema::PaneCopyMotion::NextBigWordEnd, outcome),
-            '{' => self.request_copy_motion(
-                crate::api::schema::PaneCopyMotion::PreviousParagraph,
-                outcome,
-            ),
-            '}' => {
-                self.request_copy_motion(crate::api::schema::PaneCopyMotion::NextParagraph, outcome)
-            }
             _ => return,
         }
         outcome.repaint = true;

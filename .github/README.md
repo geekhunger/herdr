@@ -5,7 +5,7 @@ Dein Herdr-Profil auf dem Standardzweig **herrsch**, auf Basis von Herdr 0.9.5.
 - **Ctrl+F** als Prefix, persönliche Keymaps und Vesper-Theme.
 - Tab-, Workspace- und Agent-Auswahl mit Pfeiltasten und Enter.
 - Eigene **Schedules unter Agents**, Verwaltung über **Ctrl+F → C** und per MCP in natürlicher Sprache.
-- **Text markieren → Rechtsklick → Antworten** übernimmt ein Zitat in die Codex-Eingabe. Die eigene Antwort darunter schreiben und selbst absenden.
+- **Text markieren → Rechtsklick → Reply** übernimmt ein Zitat in die Codex-Eingabe. Die eigene Antwort darunter schreiben und selbst absenden.
 - Codex-Standardmodell **gpt-6.1-sol**, Denkstufe **high**.
 
 ## Auf einem weiteren Rechner einrichten

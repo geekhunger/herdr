@@ -702,6 +702,52 @@ fn keyboard_copy_mode_content_motion_is_endpoint_backed_and_stale_safe() {
 }
 
 #[test]
+fn shift_vertical_arrows_jump_blocks_and_plain_arrows_move_one_row() {
+    for (code, motion) in [
+        (
+            KeyCode::Up,
+            crate::api::schema::PaneCopyMotion::PreviousParagraph,
+        ),
+        (
+            KeyCode::Down,
+            crate::api::schema::PaneCopyMotion::NextParagraph,
+        ),
+    ] {
+        let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+        state.set_snapshot(Box::new(snapshot()));
+        let mut frame = surface();
+        frame.panes[0].scroll = Some(crate::protocol::PaneSurfaceScrollMetrics {
+            offset_from_bottom: 0,
+            max_offset_from_bottom: 20,
+            viewport_rows: 2,
+        });
+        state.set_pane_surface(frame);
+        state.compose(160, 20).unwrap();
+        state.record_binding(
+            crate::input::KeybindMatch::Action(crate::input::KeybindAction::CopyMode),
+            &mut ClientShellInput::default(),
+        );
+        let origin = state.copy_mode.as_ref().unwrap().cursor;
+        let plain = state.handle_raw_events(vec![RawInputEvent::Key(
+            crate::input::TerminalKey::new(KeyCode::Up, KeyModifiers::empty()),
+        )]);
+        assert!(plain.actions.is_empty());
+        assert_eq!(state.copy_mode.as_ref().unwrap().cursor.row, origin.row - 1);
+        let jump = state.handle_raw_events(vec![RawInputEvent::Key(
+            crate::input::TerminalKey::new(code, KeyModifiers::SHIFT),
+        )]);
+        assert!(matches!(&jump.actions[..],
+            [ClientShellAction::Endpoint { request, .. }]
+            if matches!(&request.method, crate::api::schema::Method::PaneCopyMotion(params)
+                if params.motion == motion)));
+        let rendered = state.compose(160, 20).unwrap();
+        assert!(frame_rows(&rendered)
+            .iter()
+            .any(|row| row.contains("Shift+↑/↓")));
+    }
+}
+
+#[test]
 fn copy_search_owns_prompt_repeat_highlights_selection_and_restore() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     state.set_snapshot(Box::new(snapshot()));

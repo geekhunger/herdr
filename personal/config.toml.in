@@ -6,6 +6,7 @@ auto_switch = false
 
 [keys]
 prefix = "ctrl+f"
+copy_mode = "prefix+y"
 close_tab = "prefix+ctrl+w"
 new_tab = "prefix+ctrl+t"
 new_workspace = "prefix+ctrl+n"

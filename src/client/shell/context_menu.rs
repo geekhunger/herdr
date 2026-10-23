@@ -59,7 +59,7 @@ impl ClientContextMenuOverlay {
             } => {
                 let mut items = Vec::new();
                 if *reply_available {
-                    items.push(item("Antworten", Action::ReplySelection));
+                    items.push(item("Reply", Action::ReplySelection));
                 }
                 items.push(item("Rename pane", Action::RenamePane));
                 if *has_manual_label {
@@ -163,6 +163,7 @@ impl ClientShellState {
             pane_id = %pane_id,
             focused_pane = ?snapshot.focused_pane_id,
             codex_ready = self.reply_pane_ready(&pane_id),
+            mouse_reporting = self.hits.panes.iter().any(|hit| hit.pane_id == pane_id && hit.mouse_reporting),
             selected = self.selection.as_ref().is_some_and(|selection| selection.pane_id == pane_id && selection.is_visible()),
             cached = self.reply_selection.as_ref().is_some_and(|selection| selection.pane_id == pane_id),
             available = self.can_reply_to_selection(&pane_id),

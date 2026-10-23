@@ -1769,6 +1769,27 @@ impl ClientShellState {
                 .as_ref()
                 .is_some_and(crate::selection::Selection::is_just_click)
             {
+                // Codex drags are selected locally for Reply. A plain click must
+                // still reach Codex, so deliver its complete pair on release.
+                if let Some(hit) = self.hits.panes.iter().find(|hit| {
+                    hit.mouse_reporting
+                        && self.reply_pane_ready(&hit.pane_id)
+                        && self
+                            .selection
+                            .as_ref()
+                            .is_some_and(|selection| selection.pane_id == hit.pane_id)
+                }) {
+                    self.push_pane_mouse_event(
+                        hit,
+                        MouseEvent {
+                            kind: MouseEventKind::Down(MouseButton::Left),
+                            ..mouse
+                        },
+                        mouse.modifiers,
+                        outcome,
+                    );
+                    self.push_pane_mouse_event(hit, mouse, mouse.modifiers, outcome);
+                }
                 self.selection = None;
             }
             if copied {
@@ -2232,7 +2253,15 @@ impl ClientShellState {
                     .find(|hit| super::contains(hit.rect, point))
                     .cloned();
                 if let Some(hit) = pane_hit {
-                    if hit.mouse_reporting && super::contains(hit.inner_rect, point) {
+                    // Codex can enable its own mouse selection. Keep unmodified
+                    // drags in Herdr so Reply has the actual selected range.
+                    let reply_selection = self.config.mouse_capture
+                        && mouse.modifiers.is_empty()
+                        && self.reply_pane_ready(&hit.pane_id);
+                    if hit.mouse_reporting
+                        && !reply_selection
+                        && super::contains(hit.inner_rect, point)
+                    {
                         self.push_pane_mouse_event(&hit, mouse, mouse.modifiers, outcome);
                         self.pane_mouse_gesture = Some(ClientPaneMouseGesture {
                             last_position: self.pane_mouse_position(&hit, mouse),

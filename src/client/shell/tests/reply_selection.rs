@@ -96,8 +96,8 @@ fn choose_reply(state: &mut ClientShellState) -> ClientShellInput {
         ClientShellOverlay::ContextMenu(menu) => menu
             .items()
             .iter()
-            .position(|item| item.label == "Antworten")
-            .expect("Antworten menu item"),
+            .position(|item| item.label == "Reply")
+            .expect("Reply menu item"),
         _ => panic!("context menu"),
     };
     let mut outcome = ClientShellInput::default();
@@ -198,4 +198,80 @@ fn older_focus_snapshot_cannot_discard_a_newer_reply_selection() {
     assert!(state.can_reply_to_selection("pane_1"));
     let outcome = choose_reply(&mut state);
     assert_draft(&outcome.requests);
+}
+
+fn mouse_reporting_shell(codex: bool) -> ClientShellState {
+    let mut state = shell(true, codex);
+    let mut frame = surface();
+    frame.panes[0].mouse_reporting = true;
+    state.set_pane_surface(frame);
+    state.compose(106, 30).unwrap();
+    state
+}
+
+#[test]
+fn codex_mouse_reporting_drag_still_offers_reply() {
+    let mut state = mouse_reporting_shell(true);
+    let actions = drag(&mut state);
+    copy_reply(&mut state, &actions, "Erste Aussage\nZweite Aussage");
+    assert_draft(&choose_reply(&mut state).requests);
+    assert!(state.pane_mouse_gesture.is_none());
+}
+
+#[test]
+fn codex_single_click_and_modified_drag_still_reach_the_application() {
+    let mut state = mouse_reporting_shell(true);
+    let pane = state.hits.panes[0].inner_rect;
+    let event = |kind, modifiers| {
+        RawInputEvent::Mouse(MouseEvent {
+            kind,
+            column: pane.x + 1,
+            row: pane.y,
+            modifiers,
+        })
+    };
+    let down = state.handle_raw_events(vec![event(
+        MouseEventKind::Down(MouseButton::Left),
+        KeyModifiers::empty(),
+    )]);
+    assert!(down.requests.is_empty(), "defer click until drag is known");
+    let up = state.handle_raw_events(vec![event(
+        MouseEventKind::Up(MouseButton::Left),
+        KeyModifiers::empty(),
+    )]);
+    assert!(
+        matches!(&up.requests[..],
+        [ClientMessage::ClientShellPaneInput { events, .. }]
+        if matches!(&events[..], [
+            ClientPaneInputEvent::Mouse { kind: crate::protocol::ClientMouseKind::Down(_), .. },
+            ClientPaneInputEvent::Mouse { kind: crate::protocol::ClientMouseKind::Up(_), .. }
+        ])),
+        "a normal click is delivered as a complete pair"
+    );
+    let down = state.handle_raw_events(vec![event(
+        MouseEventKind::Down(MouseButton::Left),
+        KeyModifiers::ALT,
+    )]);
+    assert!(!down.requests.is_empty());
+    let drag = state.handle_raw_events(vec![event(
+        MouseEventKind::Drag(MouseButton::Left),
+        KeyModifiers::ALT,
+    )]);
+    assert!(!drag.requests.is_empty());
+    assert!(state.selection.is_none());
+}
+
+#[test]
+fn other_mouse_applications_keep_their_native_selection() {
+    let mut state = mouse_reporting_shell(false);
+    let pane = state.hits.panes[0].inner_rect;
+    let down = state.handle_raw_events(vec![RawInputEvent::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: pane.x,
+        row: pane.y,
+        modifiers: KeyModifiers::empty(),
+    })]);
+    assert!(!down.requests.is_empty());
+    assert!(state.pane_mouse_gesture.is_some());
+    assert!(state.selection.is_none());
 }
