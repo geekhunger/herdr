@@ -35,6 +35,21 @@ class ProfileTest(unittest.TestCase):
         self.assertIn('[mcp_servers.other]\nmodel = "untouched"\ntoken = "LOCAL_ONLY_TEST_SENTINEL"', updated)
         self.assertEqual(setup.merge_codex_defaults(updated), updated)
 
+    def test_newline_binding_preserves_other_editor_actions_and_next_section(self):
+        original = '[tui.keymap.editor]\nmove_left = "left"\ninsert_newline = [\n "ctrl-]", # quoted closing bracket\n "ctrl-j",\n]\n\n[mcp_servers.other]\ncommand = "keep"\n'
+        updated = setup.merge_codex_keymap(original)
+        self.assertIn('move_left = "left"', updated)
+        self.assertIn('[mcp_servers.other]\ncommand = "keep"', updated)
+        self.assertIn('"ctrl-enter"', updated)
+        self.assertEqual(updated.count('insert_newline ='), 1)
+        self.assertEqual(setup.merge_codex_keymap(updated), updated)
+
+    def test_newline_binding_adds_to_existing_editor_section(self):
+        original = '[tui.keymap.editor]\nmove_left = "left"\n\n[other]\nvalue = "keep"\n'
+        updated = setup.merge_codex_keymap(original)
+        self.assertEqual(updated.count('[tui.keymap.editor]'), 1)
+        self.assertLess(updated.index('insert_newline ='), updated.index('[other]'))
+
 
 if __name__ == "__main__":
     unittest.main()

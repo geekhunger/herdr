@@ -100,27 +100,44 @@ pub(super) fn render(buffer: &mut Buffer, area: Rect, data: &Schedules, palette:
     }
     super::render::render_sidebar_background(buffer, area, palette);
     let width = area.width.saturating_sub(1);
-    let mut line = |y, text: &str, style| {
-        super::render::put_text(buffer, area.x, y, width, text, style);
-    };
     let dim = Style::default().fg(palette.overlay0);
-    line(
+    super::render::put_text(
+        buffer,
+        area.x,
         area.y,
+        width,
         &"─".repeat(usize::from(width)),
         Style::default().fg(palette.surface_dim),
     );
-    let title = if let Some(snapshot) = &data.snapshot {
-        format!(" schedules {}/{}", snapshot.active, snapshot.total)
-    } else {
-        " schedules".to_owned()
-    };
-    line(
+    let heading = dim.add_modifier(Modifier::BOLD);
+    let count = data
+        .snapshot
+        .as_ref()
+        .map(|snapshot| format!("{}/{}", snapshot.active, snapshot.total));
+    let count_width = count
+        .as_deref()
+        .map_or(0, |text| text.len().min(usize::from(width)) as u16);
+    super::render::put_text(
+        buffer,
+        area.x,
         area.y + 1,
-        &title,
-        Style::default()
-            .fg(palette.text)
-            .add_modifier(Modifier::BOLD),
+        width.saturating_sub(count_width + u16::from(count_width > 0)),
+        " schedules",
+        heading,
     );
+    if let Some(count) = count {
+        super::render::put_text(
+            buffer,
+            area.x + width.saturating_sub(count_width),
+            area.y + 1,
+            count_width,
+            &count,
+            heading,
+        );
+    }
+    let mut line = |y, text: &str, style| {
+        super::render::put_text(buffer, area.x, y, width, text, style);
+    };
     let footer = area.bottom() - 1;
     let mut y = area.y + 2;
     if !data.healthy {
@@ -233,13 +250,19 @@ mod tests {
         for width in [18, 24, 36] {
             let area = Rect::new(0, 0, width, 10);
             let mut buffer = Buffer::empty(area);
-            render(&mut buffer, area, &data, &Palette::catppuccin());
+            let palette = Palette::catppuccin();
+            render(&mut buffer, area, &data, &palette);
             let text = buffer
                 .content()
                 .iter()
                 .map(|c| c.symbol())
                 .collect::<String>();
-            assert!(text.contains("schedules 1/15"));
+            assert!(text.contains("schedules"));
+            let header = (0..width - 1)
+                .map(|x| buffer[(x, 1)].symbol())
+                .collect::<String>();
+            assert!(header.ends_with("1/15"));
+            assert_eq!(buffer[(1, 1)].fg, palette.overlay0);
             assert!(text.contains("! Job 0"));
             assert!(text.contains("+12"));
         }

@@ -10,6 +10,20 @@ Text in der Codex-Ausgabe mit der Maus markieren, rechtsklicken und **Antworten*
 
 Die Tastaturvariante bleibt Ctrl+F → `[` → Pfeiltasten → Leertaste zum Markieren → Enter zum Kopieren; anschließend mit dem Einfügebefehl des Terminals zitieren und kommentieren.
 
+In der Codex-Eingabe erzeugt **Ctrl+Return** eine neue Zeile; Return allein sendet ab. Ctrl+J bleibt als Reserve verfügbar. Der Installer übernimmt die Belegung nach `tui.keymap.editor.insert_newline` und erhält die übrigen Codex-Einstellungen.
+
+## macOS Terminal: Alt und Klammern
+
+Der Mac-Installer erzeugt das Profil **Herdr - Alt und Klammern** auf Basis des bisherigen Standardprofils und setzt es als Standard- und Startprofil. Option bleibt Meta; gezielte Ausnahmen erzeugen auf dem deutschen Mac-Layout `[` / `]` über Option+5/6 und `{` / `}` über Option+8/9. Damit funktionieren auch die entsprechenden Advantage-360-Layerbelegungen. Andere Alt-Kürzel wie Wortnavigation und Alt+Backspace bleiben verfügbar. Ctrl+Return sendet einen Zeilenumbruch, auch an bereits laufende Codex-Sitzungen.
+
+macOS 15+ belegt Ctrl+Return außerdem mit „Kontextmenü anzeigen“. Wenn genau diese Standardbelegung erkannt wird, deaktiviert der Installer diesen einen Systemkurzbefehl und sichert dessen bisherige Einstellungen. Danach Terminal einmal vollständig mit Cmd+Q beenden und neu öffnen; vorhandene Fenster können ihr bisheriges Profil behalten. Nur das Terminal-Profil erneut einrichten:
+
+```sh
+python3 personal/macos_terminal.py --install
+```
+
+Sicherungen und die importierbare Datei `Herdr.terminal` liegen unter `~/.config/herdr/`. `personal/setup.py --no-terminal-profile` lässt Terminal und dessen Systemkurzbefehl unverändert. Linux und Windows erhalten die Codex-Keymap; die Übertragung von Ctrl+Return und layoutabhängigen Zeichen richtet sich dort nach dem verwendeten Terminal.
+
 ## Auf einem weiteren Computer
 
 Benötigt werden Git, Python 3.9+, Codex CLI und ein Terminal. Für einen lokalen Herdr-Build zusätzlich Rust stable, **Zig 0.16.0** und der native C/C++-Linker (macOS: Xcode Command Line Tools; Linux: C/C++-Buildwerkzeuge; Windows: Visual Studio Build Tools mit C++ und Windows SDK). Rust und Zig werden aus ihren offiziellen Installationen bezogen. Codex CLI kann mit `npm install -g @openai/codex` installiert werden.

@@ -158,6 +158,16 @@ impl ClientShellState {
             .focused_pane_id
             .clone()
             .filter(|focused| focused != &pane_id);
+        tracing::info!(
+            event = "selection.reply_menu",
+            pane_id = %pane_id,
+            focused_pane = ?snapshot.focused_pane_id,
+            codex_ready = self.reply_pane_ready(&pane_id),
+            selected = self.selection.as_ref().is_some_and(|selection| selection.pane_id == pane_id && selection.is_visible()),
+            cached = self.reply_selection.as_ref().is_some_and(|selection| selection.pane_id == pane_id),
+            available = self.can_reply_to_selection(&pane_id),
+            "reply menu selection state"
+        );
         self.overlay = Some(ClientShellOverlay::ContextMenu(ClientContextMenuOverlay {
             target: ClientContextMenuTarget::Pane {
                 pane_id,

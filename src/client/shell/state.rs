@@ -1319,17 +1319,6 @@ impl ClientShellState {
             ClientEndpointId::Local => snapshot.boot_id.clone(),
             endpoint_id => format!("{}:{}", endpoint_id.storage_key(), snapshot.boot_id),
         };
-        if self.reply_selection.as_ref().is_some_and(|selection| {
-            selection.endpoint_id != self.active_endpoint_id
-                || selection.boot_id != snapshot.boot_id
-                || snapshot.focused_pane_id.as_deref() != Some(selection.pane_id.as_str())
-                || !snapshot
-                    .panes
-                    .iter()
-                    .any(|pane| pane.pane_id == selection.pane_id)
-        }) {
-            self.reply_selection = None;
-        }
         let endpoint_boot_changed =
             self.snapshot.is_some() && self.graphics.scope() != graphics_scope;
         let generation_changed = self.active_snapshot_generation != generation;
@@ -1340,6 +1329,18 @@ impl ClientShellState {
             })
         {
             return;
+        }
+        // An out-of-order focus snapshot must not invalidate a newer selection.
+        if self.reply_selection.as_ref().is_some_and(|selection| {
+            selection.endpoint_id != self.active_endpoint_id
+                || selection.boot_id != snapshot.boot_id
+                || snapshot.focused_pane_id.as_deref() != Some(selection.pane_id.as_str())
+                || !snapshot
+                    .panes
+                    .iter()
+                    .any(|pane| pane.pane_id == selection.pane_id)
+        }) {
+            self.reply_selection = None;
         }
         // Screen revisions restart per connection. Keep the displayed surface for selection
         // content comparisons, but retire speculative frames from the old connection.

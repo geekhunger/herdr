@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install this fork, the portable keyboard profile and the independent scheduler."""
 import argparse
+import ast
 import datetime
 import json
 import os
@@ -41,7 +42,37 @@ def merge_codex_defaults(text):
         pattern = r"(?m)^" + re.escape(key) + r"\s*=.*$"
         replacement = key + " = " + json.dumps(value)
         root = re.sub(pattern, lambda _: replacement, root) if re.search(pattern, root) else root.rstrip() + "\n" + replacement + "\n"
-    return root.rstrip() + "\n\n" + rest.lstrip("\n")
+    return merge_codex_keymap(root.rstrip() + "\n\n" + rest.lstrip("\n"))
+
+
+def merge_codex_keymap(text):
+    keys = ["ctrl-enter", "ctrl-j", "ctrl-m", "enter", "shift-enter", "alt-enter"]
+    replacement = "insert_newline = " + json.dumps(keys) + "\n"
+    lines = text.splitlines(keepends=True)
+    header = next((i for i, line in enumerate(lines)
+                   if re.match(r"^\s*\[tui\.keymap\.editor\]\s*(?:#.*)?$", line)), None)
+    if header is None:
+        return text.rstrip() + "\n\n[tui.keymap.editor]\n" + replacement
+    end = next((i for i in range(header + 1, len(lines))
+                if re.match(r"^\s*\[", lines[i])), len(lines))
+    for start in range(header + 1, end):
+        if not re.match(r"^\s*insert_newline\s*=", lines[start]):
+            continue
+        # Binding values are strings or arrays. literal_eval is safe and also
+        # handles multiline lists, comments and ']' inside a quoted binding.
+        for stop in range(start + 1, end + 1):
+            raw = "".join(lines[start:stop]).split("=", 1)[1]
+            try:
+                value = ast.literal_eval(raw.strip())
+            except (SyntaxError, ValueError):
+                continue
+            if isinstance(value, str) or isinstance(value, list) and all(isinstance(v, str) for v in value):
+                lines[start:stop] = [replacement]
+                return "".join(lines)
+            break
+        raise ValueError("Vorhandene insert_newline-Bindung nicht automatisch ersetzbar; Konfiguration bleibt erhalten.")
+    lines.insert(end, replacement)
+    return "".join(lines)
 
 
 def backup(path):
@@ -139,6 +170,7 @@ def main():
     parser.add_argument("--build", action="store_true", help="Build with installed Rust and Zig 0.16.0")
     parser.add_argument("--binary", type=Path, help="Use an already built binary")
     parser.add_argument("--no-service", action="store_true", help="Install without starting the scheduler")
+    parser.add_argument("--no-terminal-profile", action="store_true", help="Keep macOS Terminal profile unchanged")
     parser.add_argument("--check", action="store_true", help="Validate the portable template without writing settings")
     args = parser.parse_args()
     if args.check:
@@ -184,6 +216,8 @@ def main():
     codex_config.write_text(merge_codex_defaults(codex_config.read_text(encoding="utf-8") if codex_config.exists() else ""), encoding="utf-8")
     subprocess.run([codex, "mcp", "add", "herdr_schedules", "--", str(python), str(base / "app/main.py"), "mcp"], check=True)
     install_path(installed)
+    if sys.platform == "darwin" and not args.no_terminal_profile:
+        subprocess.run([sys.executable, str(PROFILE / "macos_terminal.py"), "--install"], check=True)
     if not args.no_service:
         install_service(python, base)
     print("Profil installiert. Neues Terminal öffnen → herdr. Ctrl+F → C: Schedules.")

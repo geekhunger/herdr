@@ -184,3 +184,18 @@ fn typing_after_selection_discards_reply_context() {
     state.handle_input_bytes(b"x");
     assert!(state.reply_selection.is_none());
 }
+
+#[test]
+fn older_focus_snapshot_cannot_discard_a_newer_reply_selection() {
+    let mut state = shell(true, true);
+    let mut current = state.snapshot.as_deref().unwrap().clone();
+    state.snapshot.as_mut().unwrap().revision = 20;
+    let actions = drag(&mut state);
+    copy_reply(&mut state, &actions, "Erste Aussage\nZweite Aussage");
+    current.revision = 19;
+    current.focused_pane_id = Some("older-pane".into());
+    state.set_snapshot(Box::new(current));
+    assert!(state.can_reply_to_selection("pane_1"));
+    let outcome = choose_reply(&mut state);
+    assert_draft(&outcome.requests);
+}
