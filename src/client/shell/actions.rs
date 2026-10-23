@@ -282,7 +282,8 @@ impl ClientShellState {
             // between the displayed frame and this request must not reject the copy.
             .filter(|_| !live);
         let (anchor, cursor) = selection.ordered_cells();
-        self.push_endpoint_method_with_kind(
+        let requested_pane = pane_id.clone();
+        let sent = self.push_endpoint_method_with_kind(
             crate::api::schema::Method::PaneSelectionRead(
                 crate::api::schema::PaneSelectionReadParams {
                     pane_id,
@@ -300,6 +301,25 @@ impl ClientShellState {
             PendingEndpointKind::SelectionCopy,
             outcome,
         );
+        self.reply_selection = if sent && self.reply_pane_ready(&requested_pane) {
+            outcome.actions.last().and_then(|action| match action {
+                ClientShellAction::Endpoint {
+                    endpoint_id,
+                    boot_id,
+                    request,
+                } => Some(super::reply_selection::ReplySelection {
+                    endpoint_id: endpoint_id.clone(),
+                    boot_id: boot_id.clone(),
+                    pane_id: requested_pane,
+                    request_id: request.id.clone(),
+                    text: None,
+                    requested: false,
+                }),
+                _ => None,
+            })
+        } else {
+            None
+        };
     }
 
     pub(super) fn push_endpoint_method(
@@ -634,15 +654,22 @@ impl ClientShellState {
                 return (repaint, outcome.actions);
             }
             PendingEndpointKind::SelectionCopy => {
+                if self
+                    .reply_selection
+                    .as_ref()
+                    .is_some_and(|selection| selection.request_id == request_id)
+                    && !matches!(&result, Ok(crate::api::schema::ResponseResult::PaneSelection { text, .. }) if !text.trim().is_empty())
+                {
+                    self.reply_selection = None;
+                }
                 return match result {
-                    Ok(crate::api::schema::ResponseResult::PaneSelection { text, .. })
+                    Ok(crate::api::schema::ResponseResult::PaneSelection { text, pane_id })
                         if !text.is_empty() =>
                     {
                         let repaint = self.show_copy_feedback(std::time::Instant::now());
-                        (
-                            repaint,
-                            vec![ClientShellAction::ClipboardWrite(text.into_bytes())],
-                        )
+                        let mut actions = self.capture_reply_copy(request_id, &pane_id, &text);
+                        actions.insert(0, ClientShellAction::ClipboardWrite(text.into_bytes()));
+                        (repaint, actions)
                     }
                     Ok(crate::api::schema::ResponseResult::PaneSelection { .. }) => {
                         (false, Vec::new())

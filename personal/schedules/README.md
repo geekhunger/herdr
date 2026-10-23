@@ -2,6 +2,8 @@
 
 Eigene lokale Schedule-Verwaltung für macOS. Tastaturdialog und MCP greifen auf dieselbe SQLite-Datenbank zu. Ein Benutzer-LaunchAgent startet Codex CLI direkt mit `--no-daemon`; die ChatGPT-App und ihr Scheduler werden nicht verwendet.
 
+Der vollständige persönliche Fork einschließlich portabler Keymaps und Einrichtung für weitere Rechner liegt unter [geekhunger/herdr, Zweig herrsch](https://github.com/geekhunger/herdr/tree/herrsch). Die Anleitung dafür ist [personal/README.md](https://github.com/geekhunger/herdr/blob/herrsch/personal/README.md).
+
 ## Tastatur
 
 `Ctrl+F`, loslassen, `C` öffnet die Verwaltung.
@@ -33,7 +35,7 @@ Die Übersicht verwendet einen atomar geschriebenen, begrenzten JSON-Snapshot de
 
 **Einmalig den Herdr-Client neu öffnen:** Ctrl+F → q (kleines q, ohne Ctrl) trennt nur die Oberfläche. Danach im Terminal `herdr` eingeben. Workspaces, Tabs und laufende Agenten bleiben auf dem bestehenden Server erhalten. Ctrl+F → Ctrl+Q ist weiterhin dein Befehl zum Schließen eines Workspace.
 
-Der lokale Build basiert auf Herdr 0.9.5 für Apple Silicon. Die offizielle Homebrew-Datei bleibt unter `/opt/homebrew/Cellar/herdr/0.9.5/bin/herdr` erhalten. `/opt/homebrew/bin/herdr` zeigt auf den lokalen Build unter `~/.local/share/herdr-schedules/bin/herdr`. Ein zukünftiges Homebrew-Upgrade kann diesen Verweis ersetzen; dann muss die Sidebar-Erweiterung für die neue Version angepasst werden. Der Quellpatch liegt in `native-sidebar.patch`; der fertige Build in `bin/herdr`. Zum Rückweg: `/usr/bin/python3 restore-herdr.py`. Das entfernt weder Jobs noch den unabhängigen Scheduler.
+Die Sidebar ist direkt im Quellcode dieses Forks enthalten. Der portable Installer unter `personal/setup.py` baut Herdr oder verwendet `--binary PFAD`, kopiert das Profil in das Benutzerverzeichnis und richtet einen Starter unter `~/.local/bin` ein. Das offizielle Homebrew-Programm wird dadurch nicht überschrieben. Native Pakete müssen zur Architektur des Zielrechners passen.
 
 ## Zeitpläne
 
@@ -99,7 +101,7 @@ Installation: `~/.local/share/herdr-schedules/`
 - `runs/<Lauf-ID>/`: Prompt-Snapshot, Antwort, Ereignis- und Fehlerprotokoll
 - `daemon.stdout.log`, `daemon.stderr.log`: Dienstprotokolle
 
-LaunchAgent: `~/Library/LaunchAgents/local.herrsch.herdr-schedules.plist`
+macOS-LaunchAgent: `~/Library/LaunchAgents/local.herrsch.herdr-schedules.plist`. Linux verwendet einen systemd-Benutzerdienst, Windows die Aufgabe „Herdr Schedules“ bei Benutzeranmeldung.
 
 Der Dienst läuft als angemeldeter Benutzer; er wird bei Anmeldung gestartet und nach einem Absturz neu gestartet. Eine SQLite-Transaktion verhindert konkurrierende Einreihungen. Prozesssperren erkennen abgebrochene Worker; unklare abgebrochene Läufe werden nicht automatisch noch einmal ausgeführt.
 
@@ -108,10 +110,10 @@ Die vorhandenen ChatGPT-Jobs bleiben in ihrer bisherigen Verwaltung. Es werden k
 ## Installation und Prüfung
 
 ```sh
-/usr/bin/python3 install.py
+python3 personal/setup.py --build
 ```
 
-Der Installer sichert Konfigurationen, kopiert den Programmcode, registriert den MCP-Server, richtet den LaunchAgent ein und lädt Herdr neu. Wenn der Dienst schon läuft, wird er nicht unterbrochen. Bei späteren Codeupdates muss der Dienst nach Abschluss aktiver Läufe gezielt neu gestartet werden.
+Der portable Installer sichert Konfigurationen, kopiert den Programmcode, registriert den MCP-Server und richtet den jeweiligen Benutzerdienst ein. Wenn der Dienst schon läuft, wird er nicht unterbrochen. Bei späteren Codeupdates muss der Dienst nach Abschluss aktiver Läufe gezielt neu gestartet werden.
 
 Tests in diesem Quellordner:
 
@@ -119,4 +121,4 @@ Tests in diesem Quellordner:
 ~/.local/share/herdr-schedules/venv/bin/python -m unittest discover -s tests -v
 ```
 
-Isolierte Testdaten sind über `HERDR_SCHEDULES_HOME` möglich. `HERDR_SCHEDULES_CODEX` ist ausschließlich für einen expliziten Test-Runner vorgesehen. Die Produktivinstallation verwendet `/opt/homebrew/bin/codex`.
+Isolierte Testdaten sind über `HERDR_SCHEDULES_HOME` möglich. `HERDR_SCHEDULES_CODEX` ist ausschließlich für einen expliziten Test-Runner vorgesehen. Die Produktivinstallation findet die eigenständige Codex CLI im PATH; auf diesem Mac unter `/opt/homebrew/bin/codex`.

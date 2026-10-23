@@ -50,6 +50,16 @@ jobs:
       - name: Build Windows with ConPTY runtime
         if: runner.os == 'Windows'
         run: python scripts/package_windows_conpty.py build-local
+      - name: Record build identity
+        shell: python
+        run: |
+          import json,os,platform
+          from pathlib import Path
+          Path('target/release/personal-build.json').write_text(json.dumps({
+              'commit':os.environ['GITHUB_SHA'],'system':platform.system(),
+              'architecture':platform.machine(),'base_version':'0.9.5',
+              'profile':'herrsch'
+          },indent=2),encoding='utf-8')
       - uses: actions/upload-artifact@v4
         with:
           name: herdr-personal-${{ matrix.os }}
@@ -57,3 +67,4 @@ jobs:
             target/release/herdr
             target/release/herdr.exe
             target/release/conpty/
+            target/release/personal-build.json

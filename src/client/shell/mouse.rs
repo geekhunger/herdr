@@ -1930,6 +1930,7 @@ impl ClientShellState {
                 }
             }
             MouseEventKind::Down(MouseButton::Left) => {
+                self.reply_selection = None;
                 if self.selection.take().is_some() {
                     outcome.repaint = true;
                 }

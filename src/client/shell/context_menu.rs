@@ -54,9 +54,14 @@ impl ClientContextMenuOverlay {
                 source_pane_id,
                 has_manual_label,
                 right_click_passthrough,
+                reply_available,
                 ..
             } => {
-                let mut items = vec![item("Rename pane", Action::RenamePane)];
+                let mut items = Vec::new();
+                if *reply_available {
+                    items.push(item("Antworten", Action::ReplySelection));
+                }
+                items.push(item("Rename pane", Action::RenamePane));
                 if *has_manual_label {
                     items.push(item("Clear pane name", Action::ClearPaneName));
                 }
@@ -160,6 +165,7 @@ impl ClientShellState {
                 source_pane_id,
                 has_manual_label: pane.label.is_some(),
                 right_click_passthrough: pane.right_click_passthrough,
+                reply_available: self.can_reply_to_selection(&pane.pane_id),
             },
             x,
             y,
@@ -370,6 +376,9 @@ impl ClientShellState {
         };
 
         match action {
+            ClientContextMenuAction::ReplySelection => {
+                self.begin_selection_reply(&pane_id, outcome)
+            }
             ClientContextMenuAction::RenamePane => {
                 let label = self.snapshot.as_deref().and_then(|snapshot| {
                     snapshot

@@ -4,6 +4,12 @@ Persönlicher Fork von [herdrdev/herdr](https://github.com/herdrdev/herdr), Basi
 
 Enthalten sind die native Schedule-Übersicht unter Agents, der eigene Scheduler, die gemeinsame MCP-/Tastaturverwaltung, das Vesper-Theme, sämtliche persönlichen Keymaps, die drei Auswahldialoge und Codex-Standardmodell `gpt-6.1-sol` mit Denkstufe `high`.
 
+## Auf eine Codex-Antwort antworten
+
+Text in der Codex-Ausgabe mit der Maus markieren, rechtsklicken und **Antworten** wählen. Herdr fügt die Auswahl als Markdown-Zitat in die Eingabe desselben Codex-Agenten ein. Darunter die eigene Antwort schreiben und selbst absenden. Der Menüpunkt schickt keine Nachricht automatisch ab und liest nicht aus der Zwischenablage. Auch eine bereits automatisch kopierte Auswahl bleibt dafür verfügbar. Ein Pane-Wechsel, eine neue Markierung oder weitere Eingabe verwirft den vorherigen Zitatbezug. Der Menüpunkt erscheint für eine Auswahl im fokussierten, als Codex erkannten Agenten; in einem Shell-Pane wird kein Zitat eingefügt.
+
+Die Tastaturvariante bleibt Ctrl+F → `[` → Pfeiltasten → Leertaste zum Markieren → Enter zum Kopieren; anschließend mit dem Einfügebefehl des Terminals zitieren und kommentieren.
+
 ## Auf einem weiteren Computer
 
 Benötigt werden Git, Python 3.9+, Codex CLI und ein Terminal. Für einen lokalen Herdr-Build zusätzlich Rust stable, **Zig 0.16.0** und der native C/C++-Linker (macOS: Xcode Command Line Tools; Linux: C/C++-Buildwerkzeuge; Windows: Visual Studio Build Tools mit C++ und Windows SDK). Rust und Zig werden aus ihren offiziellen Installationen bezogen. Codex CLI kann mit `npm install -g @openai/codex` installiert werden.

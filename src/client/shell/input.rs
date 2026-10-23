@@ -199,6 +199,7 @@ impl ClientShellState {
             outcome.repaint = true;
             return true;
         }
+        self.reply_selection = None;
         self.word_selection_gesture = None;
         if self.copy_or_terminal_mode() != ClientShellMode::Copy && self.selection.take().is_some()
         {
@@ -397,6 +398,7 @@ impl ClientShellState {
                 let initial_context = self.input_context();
                 let target = self.route_key_press(&key, outcome);
                 if let Some(target) = target.as_ref() {
+                    self.reply_selection = None;
                     self.push_pane_key(target.clone(), key.clone(), outcome);
                 }
                 let resulting_context = self.input_context();

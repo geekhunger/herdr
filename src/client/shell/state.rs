@@ -517,6 +517,7 @@ pub(super) enum ClientContextMenuAction {
     RemoveWorktree,
     ToggleGroup,
     NewTab,
+    ReplySelection,
     RenamePane,
     ClearPaneName,
     SwapWithFocusedPane,
@@ -547,6 +548,7 @@ pub(super) enum ClientContextMenuTarget {
         source_pane_id: Option<String>,
         has_manual_label: bool,
         right_click_passthrough: bool,
+        reply_available: bool,
     },
 }
 
@@ -857,6 +859,7 @@ pub(super) struct ClientCopyModeState {
 }
 
 pub(crate) struct ClientShellState {
+    pub(super) reply_selection: Option<super::reply_selection::ReplySelection>,
     pub(super) schedules: super::schedules::Schedules,
     pub(super) machine_diagnostics: super::machine_diagnostics::MachineDiagnostics,
     pub(super) config: ClientShellConfig,
@@ -1031,6 +1034,7 @@ impl ClientShellState {
                 .extend(saved.collapsed_groups);
         }
         Self {
+            reply_selection: None,
             schedules: Default::default(),
             machine_diagnostics: Default::default(),
             config,
@@ -1282,6 +1286,7 @@ impl ClientShellState {
         self.url_click_consumes_until_up = false;
         self.replaying_url_click = false;
         self.selection = None;
+        self.reply_selection = None;
         self.last_pane_click = None;
         self.selection_autoscroll = None;
         self.selection_autoscroll_deadline = None;
@@ -1311,6 +1316,17 @@ impl ClientShellState {
             ClientEndpointId::Local => snapshot.boot_id.clone(),
             endpoint_id => format!("{}:{}", endpoint_id.storage_key(), snapshot.boot_id),
         };
+        if self.reply_selection.as_ref().is_some_and(|selection| {
+            selection.endpoint_id != self.active_endpoint_id
+                || selection.boot_id != snapshot.boot_id
+                || snapshot.focused_pane_id.as_deref() != Some(selection.pane_id.as_str())
+                || !snapshot
+                    .panes
+                    .iter()
+                    .any(|pane| pane.pane_id == selection.pane_id)
+        }) {
+            self.reply_selection = None;
+        }
         let endpoint_boot_changed =
             self.snapshot.is_some() && self.graphics.scope() != graphics_scope;
         let generation_changed = self.active_snapshot_generation != generation;
