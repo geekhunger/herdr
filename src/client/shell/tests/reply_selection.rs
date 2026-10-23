@@ -105,26 +105,24 @@ fn choose_reply(state: &mut ClientShellState) -> ClientShellInput {
     outcome
 }
 
-fn assert_draft(actions: &[ClientShellAction]) {
-    let pastes = actions
-        .iter()
-        .filter_map(|action| match action {
-            ClientShellAction::Endpoint { request, .. } => match &request.method {
-                crate::api::schema::Method::PaneSendInput(params) => Some(params),
-                _ => None,
-            },
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(pastes.len(), 1);
-    assert_eq!(pastes[0].pane_id, "pane_1");
-    assert_eq!(pastes[0].text, "> Erste Aussage\n> Zweite Aussage\n\n");
-    assert!(pastes[0].keys.is_empty(), "no Enter or automatic submit");
+fn assert_draft(requests: &[ClientMessage]) {
+    assert!(
+        matches!(requests, [ClientMessage::ClientShellPaneInput { pane_id, events }]
+        if pane_id == "pane_1" && matches!(events.as_slice(), [ClientPaneInputEvent::Paste(text)]
+            if text == "> Erste Aussage\n> Zweite Aussage\n\n")),
+        "quote is a single paste, without Enter"
+    );
 }
 
 #[test]
 fn drag_right_click_reply_pastes_quote_into_same_codex_without_submit() {
     let mut state = shell(true, true);
+    state.set_endpoint_methods(Some(
+        crate::server::client_commands::supported_client_shell_method_names()
+            .iter()
+            .map(|name| name.to_string())
+            .collect(),
+    ));
     let actions = drag(&mut state);
     assert!(
         state.selection.is_none(),
@@ -136,8 +134,8 @@ fn drag_right_click_reply_pastes_quote_into_same_codex_without_submit() {
         [ClientShellAction::ClipboardWrite(_)]
     ));
     let outcome = choose_reply(&mut state);
-    assert_draft(&outcome.actions);
-    assert!(outcome.requests.is_empty());
+    assert_draft(&outcome.requests);
+    assert!(outcome.actions.is_empty());
     assert!(state.overlay.is_none());
     assert!(state.reply_selection.is_none(), "consume quote only once");
 }
@@ -148,18 +146,15 @@ fn reply_waits_for_pending_copy_and_supports_manual_selection() {
         let mut state = shell(auto_copy, true);
         let automatic = drag(&mut state);
         let outcome = choose_reply(&mut state);
-        assert!(!outcome.actions.iter().any(|action| matches!(action,
-            ClientShellAction::Endpoint { request, .. } if matches!(request.method, crate::api::schema::Method::PaneSendInput(_)))));
+        assert!(outcome.requests.is_empty());
         let read = if auto_copy {
             automatic
         } else {
             outcome.actions
         };
-        assert_draft(&copy_reply(
-            &mut state,
-            &read,
-            "Erste Aussage\nZweite Aussage",
-        ));
+        copy_reply(&mut state, &read, "Erste Aussage\nZweite Aussage");
+        let input = state.handle_raw_events(Vec::new());
+        assert_draft(&input.requests);
     }
 }
 

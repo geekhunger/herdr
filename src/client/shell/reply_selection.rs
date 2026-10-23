@@ -10,6 +10,13 @@ pub(super) struct ReplySelection {
     pub(super) requested: bool,
 }
 
+pub(super) struct ReplyPaste {
+    endpoint_id: ClientEndpointId,
+    boot_id: String,
+    pane_id: String,
+    text: String,
+}
+
 fn quote(text: &str) -> Option<String> {
     if text.len() > 131_072 || text.trim().is_empty() {
         return None;
@@ -77,7 +84,8 @@ impl ClientShellState {
                 return;
             }
         }
-        self.paste_selection_reply(outcome);
+        self.stage_selection_reply();
+        self.flush_reply_paste(outcome);
     }
 
     pub(super) fn capture_reply_copy(
@@ -106,12 +114,11 @@ impl ClientShellState {
         if !selection.requested {
             return Vec::new();
         }
-        let mut outcome = ClientShellInput::default();
-        self.paste_selection_reply(&mut outcome);
-        outcome.actions
+        self.stage_selection_reply();
+        Vec::new()
     }
 
-    fn paste_selection_reply(&mut self, outcome: &mut ClientShellInput) {
+    fn stage_selection_reply(&mut self) {
         let Some(selection) = self.reply_selection.take() else {
             return;
         };
@@ -127,21 +134,39 @@ impl ClientShellState {
         let Some(text) = selection.text.as_deref().and_then(quote) else {
             return;
         };
+        self.pending_reply_paste = Some(ReplyPaste {
+            endpoint_id: selection.endpoint_id,
+            boot_id: selection.boot_id,
+            pane_id: selection.pane_id,
+            text,
+        });
+    }
+
+    pub(crate) fn flush_reply_paste(&mut self, outcome: &mut ClientShellInput) {
+        let Some(paste) = self.pending_reply_paste.take() else {
+            return;
+        };
+        if !self.reply_pane_ready(&paste.pane_id)
+            || paste.endpoint_id != self.active_endpoint_id
+            || self
+                .snapshot
+                .as_deref()
+                .is_none_or(|snapshot| snapshot.boot_id != paste.boot_id)
+        {
+            return;
+        }
         self.selection = None;
         self.selection_highlight_clear_deadline = None;
         self.word_selection_gesture = None;
         if self.mode == ClientShellMode::Copy {
             self.exit_copy_mode(false, outcome);
         }
-        // Existing endpoint API encodes text as a paste. No Enter or submission is sent.
-        self.push_endpoint_method(
-            crate::api::schema::Method::PaneSendInput(crate::api::schema::PaneSendInputParams {
-                pane_id: selection.pane_id,
-                text,
-                keys: Vec::new(),
-            }),
-            outcome,
-        );
+        // Use the same ordered user-input lane as an ordinary clipboard paste.
+        // This works with existing servers and never sends Enter.
+        outcome.requests.push(ClientMessage::ClientShellPaneInput {
+            pane_id: paste.pane_id,
+            events: vec![ClientPaneInputEvent::Paste(paste.text)],
+        });
         outcome.repaint = true;
     }
 }

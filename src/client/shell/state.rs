@@ -859,6 +859,7 @@ pub(super) struct ClientCopyModeState {
 }
 
 pub(crate) struct ClientShellState {
+    pub(super) pending_reply_paste: Option<super::reply_selection::ReplyPaste>,
     pub(super) reply_selection: Option<super::reply_selection::ReplySelection>,
     pub(super) schedules: super::schedules::Schedules,
     pub(super) machine_diagnostics: super::machine_diagnostics::MachineDiagnostics,
@@ -1034,6 +1035,7 @@ impl ClientShellState {
                 .extend(saved.collapsed_groups);
         }
         Self {
+            pending_reply_paste: None,
             reply_selection: None,
             schedules: Default::default(),
             machine_diagnostics: Default::default(),
@@ -1287,6 +1289,7 @@ impl ClientShellState {
         self.replaying_url_click = false;
         self.selection = None;
         self.reply_selection = None;
+        self.pending_reply_paste = None;
         self.last_pane_click = None;
         self.selection_autoscroll = None;
         self.selection_autoscroll_deadline = None;
