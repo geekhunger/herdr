@@ -15,6 +15,10 @@ def main():
     parser.add_argument("argument", nargs="?")
     parser.add_argument("--json", dest="payload", default=None, help="JSON arguments; otherwise read stdin")
     args = parser.parse_args()
+    if args.mode in ("mcp", "call"):
+        for stream in (sys.stdin, sys.stdout):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
     store = Store()
     if args.mode == "ui":
         from tui import start

@@ -5,6 +5,8 @@ on:
     branches: [herrsch]
 permissions:
   contents: read
+env:
+  PYTHONUTF8: '1'
 jobs:
   build:
     strategy:

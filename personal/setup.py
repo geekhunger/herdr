@@ -34,7 +34,7 @@ def render_config(python, base):
 
 
 def merge_codex_defaults(text):
-    defaults = json.loads((PROFILE / "codex-defaults.json").read_text())
+    defaults = json.loads((PROFILE / "codex-defaults.json").read_text(encoding="utf-8"))
     match = re.search(r"(?m)^[ \t]*\[", text)
     root, rest = (text[:match.start()], text[match.start():]) if match else (text, "")
     for key, value in defaults.items():
@@ -84,11 +84,11 @@ def install_path(binary):
         target.symlink_to(binary)
         shell = Path(os.environ.get("SHELL", "/bin/bash")).name
         rc = Path.home() / (".zshrc" if shell == "zsh" else ".bashrc")
-        text = rc.read_text() if rc.exists() else ""
+        text = rc.read_text(encoding="utf-8") if rc.exists() else ""
         marker = "# herdr-personal PATH"
         if marker not in text:
             backup(rc)
-            rc.write_text(text.rstrip() + '\n\n' + marker + '\nexport PATH="$HOME/.local/bin:$PATH"\n')
+            rc.write_text(text.rstrip() + '\n\n' + marker + '\nexport PATH="$HOME/.local/bin:$PATH"\n', encoding="utf-8")
     os.environ["PATH"] = str(directory) + os.pathsep + os.environ.get("PATH", "")
 
 
@@ -181,7 +181,7 @@ def main():
     subprocess.run([str(installed), "config", "check"], env=env, check=True)
     codex_config = Path(os.environ.get("CODEX_HOME", str(Path.home()/".codex"))) / "config.toml"
     codex_config.parent.mkdir(parents=True, exist_ok=True); backup(codex_config)
-    codex_config.write_text(merge_codex_defaults(codex_config.read_text() if codex_config.exists() else ""))
+    codex_config.write_text(merge_codex_defaults(codex_config.read_text(encoding="utf-8") if codex_config.exists() else ""), encoding="utf-8")
     subprocess.run([codex, "mcp", "add", "herdr_schedules", "--", str(python), str(base / "app/main.py"), "mcp"], check=True)
     install_path(installed)
     if not args.no_service:

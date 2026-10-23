@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import shlex
 import unittest
@@ -11,7 +12,7 @@ spec.loader.exec_module(setup)
 
 class ProfileTest(unittest.TestCase):
     def test_template_has_all_personal_bindings_without_machine_paths(self):
-        template = (PROFILE / "config.toml.in").read_text()
+        template = (PROFILE / "config.toml.in").read_text(encoding="utf-8")
         for binding in ['prefix = "ctrl+f"', 'close_tab = "prefix+ctrl+w"',
                         'new_workspace = "prefix+ctrl+n"', 'close_workspace = "prefix+ctrl+q"',
                         'new_tab = "prefix+ctrl+t"', 'key = "prefix+c"',
@@ -21,8 +22,9 @@ class ProfileTest(unittest.TestCase):
         rendered = setup.render_config(Path("/example home/python"), Path("/example home/schedules"))
         self.assertNotIn("@PICKER@", rendered)
         self.assertNotIn("@SCHEDULES@", rendered)
-        self.assertIn("/example home/schedules/profile/picker.py", rendered)
-        self.assertIn("/example home/schedules/app/main.py", rendered)
+        for relative in ["profile/picker.py", "app/main.py"]:
+            expected = json.dumps(str(Path("/example home/schedules") / relative))[1:-1]
+            self.assertIn(expected, rendered)
 
     def test_codex_defaults_preserve_other_settings_and_credentials(self):
         original = 'model = "old"\nother = "keep"\n\n[mcp_servers.other]\nmodel = "untouched"\ntoken = "LOCAL_ONLY_TEST_SENTINEL"\n'

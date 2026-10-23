@@ -22,5 +22,5 @@ def publish(store):
     data = {"generated_at": time.time(), "total": len(jobs),
             "active": sum(job["enabled"] for job in jobs), "jobs": rows}
     temporary = store.root / "sidebar.json.tmp"
-    temporary.write_text(json.dumps(data, ensure_ascii=False))
+    temporary.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     os.replace(temporary, store.root / "sidebar.json")

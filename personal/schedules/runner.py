@@ -103,7 +103,7 @@ def worker(store, run_id):
         # Use a file for stdin: long prompts never block a pipe, and no shell
         # interpretation can occur. Logs retain the exact approved job snapshot.
         input_file = directory / "prompt.txt"
-        input_file.write_text(prompt)
+        input_file.write_text(prompt, encoding="utf-8")
         with input_file.open("rb") as incoming, (directory / "events.jsonl").open("wb") as output, (directory / "stderr.log").open("wb") as errors:
             process = subprocess.Popen(codex_command(job, directory), stdin=incoming,
                                        stdout=output, stderr=errors, cwd=job["cwd"],
@@ -123,7 +123,7 @@ def worker(store, run_id):
                 time.sleep(0.3)
             return_code = process.wait()
         event_error = None
-        with (directory / "events.jsonl").open(errors="replace") as events:
+        with (directory / "events.jsonl").open(encoding="utf-8", errors="replace") as events:
             for line in events:
                 try:
                     event = json.loads(line)
@@ -136,7 +136,7 @@ def worker(store, run_id):
         if error is None:
             if return_code != 0 or event_error:
                 status, error = "failed", event_error or f"Codex endete mit Exit-Code {return_code}."
-            elif not (directory / "answer.txt").exists() or not (directory / "answer.txt").read_text(errors="replace").strip():
+            elif not (directory / "answer.txt").exists() or not (directory / "answer.txt").read_text(encoding="utf-8", errors="replace").strip():
                 status, error = "failed", "Codex lieferte keine abschließende Antwort; siehe Protokoll."
             else:
                 status = "succeeded"
