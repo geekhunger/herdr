@@ -80,6 +80,7 @@ def make_profile(destination):
     keys['~0036'] = ']'
     keys['~0038'] = '{'
     keys['~0039'] = '}'
+    keys['~006C'] = '@'
     # LF works in existing Codex sessions too, including legacy Terminal.app.
     keys['^000D'] = '\n'
     profile['keyMapBoundKeys'] = keys
@@ -98,6 +99,7 @@ def make_profile(destination):
     assert profile['keyMapBoundKeys']['~0036'] == ']'
     assert profile['keyMapBoundKeys']['~0038'] == '{'
     assert profile['keyMapBoundKeys']['~0039'] == '}'
+    assert profile['keyMapBoundKeys']['~006C'] == '@'
     assert profile['keyMapBoundKeys']['^000D'] == '\n'
     assert profile['useOptionAsMetaKey'] is True
     print(destination)

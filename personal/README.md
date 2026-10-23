@@ -14,7 +14,7 @@ In der Codex-Eingabe erzeugt **Ctrl+Return** eine neue Zeile; Return allein send
 
 ## macOS Terminal: Alt und Klammern
 
-Der Mac-Installer erzeugt das Profil **Herdr - Alt und Klammern** auf Basis des bisherigen Standardprofils und setzt es als Standard- und Startprofil. Option bleibt Meta; gezielte Ausnahmen erzeugen auf dem deutschen Mac-Layout `[` / `]` über Option+5/6 und `{` / `}` über Option+8/9. Damit funktionieren auch die entsprechenden Advantage-360-Layerbelegungen. Andere Alt-Kürzel wie Wortnavigation und Alt+Backspace bleiben verfügbar. Ctrl+Return sendet einen Zeilenumbruch, auch an bereits laufende Codex-Sitzungen.
+Der Mac-Installer erzeugt das Profil **Herdr - Alt und Klammern** auf Basis des bisherigen Standardprofils und setzt es als Standard- und Startprofil. Option bleibt Meta; gezielte Ausnahmen erzeugen auf dem deutschen Mac-Layout `[` / `]` über Option+5/6 und `{` / `}` über Option+8/9 sowie `@` über Option+L. Damit funktionieren auch die entsprechenden Advantage-360-Layerbelegungen. Andere Alt-Kürzel wie Wortnavigation und Alt+Backspace bleiben verfügbar. Ctrl+Return sendet einen Zeilenumbruch, auch an bereits laufende Codex-Sitzungen.
 
 macOS 15+ belegt Ctrl+Return außerdem mit „Kontextmenü anzeigen“. Wenn genau diese Standardbelegung erkannt wird, deaktiviert der Installer diesen einen Systemkurzbefehl und sichert dessen bisherige Einstellungen. Danach Terminal einmal vollständig mit Cmd+Q beenden und neu öffnen; vorhandene Fenster können ihr bisheriges Profil behalten. Nur das Terminal-Profil erneut einrichten:
 
