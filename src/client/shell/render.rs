@@ -182,6 +182,8 @@ pub(super) fn render_mode_bar(
                         (" move  ".to_owned(), base),
                         ("Shift+↑/↓".to_owned(), key),
                         (" block  ".to_owned(), base),
+                        ("Alt+↑/↓".to_owned(), key),
+                        (" page  ".to_owned(), base),
                         ("/ ?".to_owned(), key),
                         (" search  ".to_owned(), base),
                         ("n/N".to_owned(), key),

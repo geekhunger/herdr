@@ -146,6 +146,14 @@ impl ClientShellState {
                 self.move_copy_cursor(0, -1, outcome);
                 return;
             }
+            KeyCode::Up if key.modifiers == KeyModifiers::ALT => {
+                self.move_copy_page(-1, false, outcome);
+                return;
+            }
+            KeyCode::Down if key.modifiers == KeyModifiers::ALT => {
+                self.move_copy_page(1, false, outcome);
+                return;
+            }
             KeyCode::Down if key.modifiers == KeyModifiers::SHIFT => {
                 self.request_copy_motion(
                     crate::api::schema::PaneCopyMotion::NextParagraph,
