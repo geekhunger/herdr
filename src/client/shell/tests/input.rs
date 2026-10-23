@@ -1,6 +1,32 @@
 use super::*;
 
 #[test]
+fn control_z_and_control_shift_z_never_reach_a_pane_or_change_modes() {
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    state.set_snapshot(Box::new(snapshot()));
+    for modifiers in [
+        KeyModifiers::CONTROL,
+        KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+    ] {
+        for code in [KeyCode::Char('z'), KeyCode::Char('Z')] {
+            for kind in [
+                crossterm::event::KeyEventKind::Press,
+                crossterm::event::KeyEventKind::Repeat,
+                crossterm::event::KeyEventKind::Release,
+            ] {
+                let mut key = crate::input::TerminalKey::new(code, modifiers);
+                key.kind = kind;
+                let mode = state.mode;
+                let result = state.handle_raw_events(vec![RawInputEvent::Key(key)]);
+                assert!(result.requests.is_empty());
+                assert!(result.actions.is_empty());
+                assert_eq!(state.mode, mode);
+            }
+        }
+    }
+}
+
+#[test]
 fn host_appearance_prefers_explicit_reports_over_background_inference() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     state.config.theme_runtime.auto_switch = true;

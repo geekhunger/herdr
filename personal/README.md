@@ -12,6 +12,14 @@ Die Tastaturvariante bleibt Ctrl+F → `y` → Pfeiltasten zum Bewegen, Shift+�
 
 In der Codex-Eingabe erzeugt **Ctrl+Return** eine neue Zeile; Return allein sendet ab. Ctrl+J bleibt als Reserve verfügbar. Der Installer übernimmt die Belegung nach `tui.keymap.editor.insert_newline` und erhält die übrigen Codex-Einstellungen.
 
+## Eingabe leeren und unerwünschte Kürzel
+
+**Ctrl+L** leert den ganzen noch nicht gesendeten Textentwurf im fokussierten lokalen Codex-Pane, auch über mehrere Zeilen. Herdr verwendet dafür Codex’ Schnittstelle für temporäre Editorentwürfe; Verlauf und laufende Aufgabe werden nicht als Abbruch angesprochen. **Ctrl+Z** und **Ctrl+Shift+Z** werden in Herdr abgefangen.
+
+Der Installer ergänzt eine `codex`-Shellfunktion und den lokalen Helfer `profile/codex_editor.py`. Außerhalb von Herdr startet sie Codex unverändert. Der normale externe Editor über Ctrl+G bleibt erhalten. Nur ein frischer, einmaliger Auftrag für denselben Pane und Codex-Prozess leert dessen temporäre Entwurfsdatei.
+
+Für bestehende Sitzungen nach Abschluss einer laufenden Aufgabe Codex mit `/exit` beenden, in zsh `source ~/.zshrc` (in Bash `source ~/.bashrc`) ausführen und dieselbe Sitzung mit `codex resume SESSION-ID` fortsetzen. Neue Shells laden das Profil automatisch. Unter Windows die installierte PowerShell-Profilfunktion verwenden. Ein noch ohne Helfer gestarteter Codex erhält bei Ctrl+L einen Hinweis zum Neustart.
+
 ## macOS Terminal: Alt und Klammern
 
 Der Mac-Installer erzeugt das Profil **Herdr - Alt und Klammern** auf Basis des bisherigen Standardprofils und setzt es als Standard- und Startprofil. Option bleibt Meta; gezielte Ausnahmen erzeugen auf dem deutschen Mac-Layout `[` / `]` über Option+5/6 und `{` / `}` über Option+8/9 sowie `@` über Option+L. Damit funktionieren auch die entsprechenden Advantage-360-Layerbelegungen. Andere Alt-Kürzel wie Wortnavigation und Alt+Backspace bleiben verfügbar. Ctrl+Return sendet einen Zeilenumbruch, auch an bereits laufende Codex-Sitzungen.

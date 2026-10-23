@@ -47,16 +47,22 @@ def merge_codex_defaults(text):
 
 def merge_codex_keymap(text):
     keys = ["ctrl-enter", "ctrl-j", "ctrl-m", "enter", "shift-enter", "alt-enter"]
-    replacement = "insert_newline = " + json.dumps(keys) + "\n"
+    text = merge_codex_binding(text, "editor", "insert_newline", keys)
+    return merge_codex_binding(text, "global", "clear_terminal", [])
+
+
+def merge_codex_binding(text, context, action, keys):
+    section = "tui.keymap." + context
+    replacement = action + " = " + json.dumps(keys) + "\n"
     lines = text.splitlines(keepends=True)
     header = next((i for i, line in enumerate(lines)
-                   if re.match(r"^\s*\[tui\.keymap\.editor\]\s*(?:#.*)?$", line)), None)
+                   if re.match(r"^\s*\[" + re.escape(section) + r"\]\s*(?:#.*)?$", line)), None)
     if header is None:
-        return text.rstrip() + "\n\n[tui.keymap.editor]\n" + replacement
+        return text.rstrip() + "\n\n[" + section + "]\n" + replacement
     end = next((i for i in range(header + 1, len(lines))
                 if re.match(r"^\s*\[", lines[i])), len(lines))
     for start in range(header + 1, end):
-        if not re.match(r"^\s*insert_newline\s*=", lines[start]):
+        if not re.match(r"^\s*" + re.escape(action) + r"\s*=", lines[start]):
             continue
         # Binding values are strings or arrays. literal_eval is safe and also
         # handles multiline lists, comments and ']' inside a quoted binding.
@@ -70,7 +76,7 @@ def merge_codex_keymap(text):
                 lines[start:stop] = [replacement]
                 return "".join(lines)
             break
-        raise ValueError("Vorhandene insert_newline-Bindung nicht automatisch ersetzbar; Konfiguration bleibt erhalten.")
+        raise ValueError("Vorhandene " + action + "-Bindung nicht automatisch ersetzbar; Konfiguration bleibt erhalten.")
     lines.insert(end, replacement)
     return "".join(lines)
 
@@ -79,6 +85,28 @@ def backup(path):
     if path.exists():
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         shutil.copy2(path, path.with_name(path.name + ".before-herdr-personal-" + stamp))
+
+
+def install_codex_editor(python, base):
+    helper = base / "profile/codex_editor.py"
+    helper.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(PROFILE / "codex_editor.py", helper)
+    marker, end = "# >>> herdr-codex-editor >>>", "# <<< herdr-codex-editor <<<"
+    if os.name == "nt":
+        profiles = [Path.home() / "Documents" / directory / "Microsoft.PowerShell_profile.ps1"
+                    for directory in ("PowerShell", "WindowsPowerShell")]
+        quote = lambda value: "'" + str(value).replace("'", "''") + "'"
+        body = "function codex { & " + quote(python) + " " + quote(helper) + " launch -- @args }"
+    else:
+        shell = Path(os.environ.get("SHELL", "/bin/bash")).name
+        profiles = [Path.home() / (".zshrc" if shell == "zsh" else ".bashrc")]
+        body = "codex() { " + command([python, helper, "launch", "--"]) + ' "$@"; }'
+    for path in profiles:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        text = re.sub(re.escape(marker) + r".*?" + re.escape(end) + r"\n?", "", text, flags=re.S)
+        backup(path)
+        path.write_text(text.rstrip() + "\n\n" + marker + "\n" + body + "\n" + end + "\n", encoding="utf-8")
 
 
 def config_path():
@@ -216,6 +244,7 @@ def main():
     codex_config.write_text(merge_codex_defaults(codex_config.read_text(encoding="utf-8") if codex_config.exists() else ""), encoding="utf-8")
     subprocess.run([codex, "mcp", "add", "herdr_schedules", "--", str(python), str(base / "app/main.py"), "mcp"], check=True)
     install_path(installed)
+    install_codex_editor(python, base)
     if sys.platform == "darwin" and not args.no_terminal_profile:
         subprocess.run([sys.executable, str(PROFILE / "macos_terminal.py"), "--install"], check=True)
     if not args.no_service:

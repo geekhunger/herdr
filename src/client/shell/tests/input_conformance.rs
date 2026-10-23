@@ -553,10 +553,19 @@ fn run_keyboard_conformance() -> Report {
                 }
                 let press = herdr.feed(&host_bytes.0);
                 let release = herdr.feed(&host_bytes.1);
+                // This personal fork deliberately owns both suspend/redo chords.
+                let blocked = def.name == "z"
+                    && (*mods == ghostty::MOD_CTRL
+                        || *mods == ghostty::MOD_CTRL | ghostty::MOD_SHIFT);
+                if blocked {
+                    assert!(press.as_ref().is_none_or(Vec::is_empty));
+                    assert!(release.as_ref().is_none_or(Vec::is_empty));
+                }
                 let page_key_scrolls_herdr = *mods == 0
                     && matches!(def.name, "pageup" | "pagedown")
                     && herdr.runtime.plain_page_keys_use_host_scrollback() == Some(true);
-                let (Some(press), Some(release), false) = (press, release, page_key_scrolls_herdr)
+                let (Some(press), Some(release), false) =
+                    (press, release, page_key_scrolls_herdr || blocked)
                 else {
                     report.owned.push(format!(
                         "{}\t{}\t{}+{}",
@@ -2061,11 +2070,16 @@ mod windows_records {
                     let expected = [win32_input_mode(press), win32_input_mode(release)].concat();
                     let pressed = deliver_record(&mut herdr, &mut input, press, layout);
                     let released = deliver_record(&mut herdr, &mut input, release, layout);
+                    let blocked = vk == 0x5a && chord.ctrl && !chord.left_alt && !chord.alt_gr;
+                    if blocked {
+                        assert!(pressed.as_ref().is_none_or(Vec::is_empty));
+                        assert!(released.as_ref().is_none_or(Vec::is_empty));
+                    }
                     let page_key_scrolls_herdr = chord.name == "plain"
                         && matches!(key_name.as_str(), "pageup" | "pagedown")
                         && herdr.runtime.plain_page_keys_use_host_scrollback() == Some(true);
                     let (Some(pressed), Some(released), false) =
-                        (pressed, released, page_key_scrolls_herdr)
+                        (pressed, released, page_key_scrolls_herdr || blocked)
                     else {
                         tally.herdr_owned += 1;
                         herdr.reset_client();

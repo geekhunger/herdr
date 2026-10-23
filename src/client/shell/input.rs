@@ -382,6 +382,19 @@ impl ClientShellState {
         key: crate::input::TerminalKey,
         outcome: &mut ClientShellInput,
     ) {
+        // Personal profile: never forward terminal suspend/redo chords.
+        if matches!(key.code, KeyCode::Char('z' | 'Z'))
+            && key.modifiers.contains(KeyModifiers::CONTROL)
+            && key
+                .modifiers
+                .difference(KeyModifiers::CONTROL | KeyModifiers::SHIFT)
+                .is_empty()
+        {
+            return;
+        }
+        if self.handle_clear_draft(&key, outcome) {
+            return;
+        }
         outcome.repaint |= self.clear_link_hover();
         if self.copy_operation_in_flight {
             self.copy_input_queue.push_back(key);
