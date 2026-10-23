@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export a separate Terminal profile: keep Meta and German []{} characters."""
+"""Export a separate Terminal profile: keep Meta and German special characters."""
 import copy
 import argparse
 import ctypes
@@ -81,6 +81,7 @@ def make_profile(destination):
     keys['~0038'] = '{'
     keys['~0039'] = '}'
     keys['~006C'] = '@'
+    keys['~002D'] = '–'
     # LF works in existing Codex sessions too, including legacy Terminal.app.
     keys['^000D'] = '\n'
     profile['keyMapBoundKeys'] = keys
@@ -100,6 +101,7 @@ def make_profile(destination):
     assert profile['keyMapBoundKeys']['~0038'] == '{'
     assert profile['keyMapBoundKeys']['~0039'] == '}'
     assert profile['keyMapBoundKeys']['~006C'] == '@'
+    assert profile['keyMapBoundKeys']['~002D'] == '–'
     assert profile['keyMapBoundKeys']['^000D'] == '\n'
     assert profile['useOptionAsMetaKey'] is True
     print(destination)
