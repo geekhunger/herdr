@@ -33,7 +33,7 @@ fn quote(text: &str) -> Option<String> {
             .map(|line| format!("> {line}"))
             .collect::<Vec<_>>()
             .join("\n")
-            + "\n\n",
+            + "\n",
     )
 }
 
@@ -178,9 +178,9 @@ mod tests {
     fn quote_preserves_lines_and_unicode_without_terminal_controls() {
         assert_eq!(
             quote("Äpfel\r\nzweite Zeile\n").as_deref(),
-            Some("> Äpfel\n> zweite Zeile\n\n")
+            Some("> Äpfel\n> zweite Zeile\n")
         );
-        assert_eq!(quote("safe\x1b\x00text").as_deref(), Some("> safetext\n\n"));
+        assert_eq!(quote("safe\x1b\x00text").as_deref(), Some("> safetext\n"));
         assert!(quote(" \n\t").is_none());
         assert!(quote(&"x".repeat(131_073)).is_none());
     }

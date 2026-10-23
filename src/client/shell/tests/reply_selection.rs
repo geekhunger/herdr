@@ -109,7 +109,7 @@ fn assert_draft(requests: &[ClientMessage]) {
     assert!(
         matches!(requests, [ClientMessage::ClientShellPaneInput { pane_id, events }]
         if pane_id == "pane_1" && matches!(events.as_slice(), [ClientPaneInputEvent::Paste(text)]
-            if text == "> Erste Aussage\n> Zweite Aussage\n\n")),
+            if text == "> Erste Aussage\n> Zweite Aussage\n")),
         "quote is a single paste, without Enter"
     );
 }
