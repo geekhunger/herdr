@@ -5259,12 +5259,15 @@ mod tests {
     }
 
     #[test]
-    fn windows_remote_commands_suppress_powershell_progress_records() {
+    fn windows_remote_encoder_suppresses_powershell_progress_records() {
         // PowerShell serializes progress records (such as module auto-loading's
         // "Preparing modules for first use.") to the stderr CLIXML stream when
         // stderr is redirected under `-EncodedCommand`. Herdr forwards that
         // stderr, so the shared preamble must silence progress.
-        let script = decode_windows_command(&windows_powershell_script_command("exit 0"));
+        let encoded = windows_powershell_encoded_script("exit 0");
+        let script = decode_windows_command(&format!(
+            "powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand {encoded}"
+        ));
         let preference = "$ProgressPreference = 'SilentlyContinue'; ";
         assert!(script.contains(preference), "{script}");
         assert!(

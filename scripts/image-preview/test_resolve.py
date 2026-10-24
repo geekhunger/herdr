@@ -3,6 +3,9 @@ import importlib.util
 import json
 from pathlib import Path
 import sqlite3
+import stat
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -37,6 +40,21 @@ class AttachmentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve.image_bytes('https://example.com/image.png')
         self.assertEqual(resolve.image_bytes('data:image/png;base64,'+base64.b64encode(b'image bytes').decode()), b'image bytes')
+    def test_large_draft_uses_real_stdin_handoff_and_preserves_exact_bytes(self):
+        data = bytes(range(256)) * 2048
+        request = {'draft': True, 'draft_image': 'data:image/png;base64,' + base64.b64encode(data).decode()}
+        result = subprocess.run(
+            [sys.executable, str(Path(resolve.__file__)), '--request-stdin', '--resolve-only'],
+            input=json.dumps(request), text=True, capture_output=True, check=True,
+        )
+        path = Path(result.stdout.strip())
+        try:
+            self.assertEqual(path.read_bytes(), data)
+            if sys.platform != 'win32':
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+        finally:
+            path.unlink(missing_ok=True)
+
     def test_exact_session_title_and_directory(self):
         db = sqlite3.connect(self.root / 'state_5.sqlite')
         db.execute('create table threads (rollout_path text, cwd text, name text, archived integer, updated_at integer)')
