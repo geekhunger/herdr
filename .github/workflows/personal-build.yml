@@ -51,6 +51,14 @@ jobs:
               with tarfile.open(path) as archive: archive.extractall(out,filter='data')
           directory=next(out.iterdir())
           with open(os.environ['GITHUB_PATH'],'a') as file:file.write(str(directory)+'\n')
+      - name: Expose checksum tools on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          if ! brew list coreutils >/dev/null 2>&1; then
+            brew install coreutils
+          fi
+          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
       - name: Python tests
         shell: bash
         run: |

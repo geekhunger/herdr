@@ -1236,6 +1236,16 @@ fn process_session_id(pid: u32) -> Option<i32> {
     fields.get(3)?.parse().ok()
 }
 
+/// Native image panels are currently provided by the macOS client.
+pub(crate) fn open_image_preview(_request: &str) -> std::io::Result<bool> {
+    Ok(false)
+}
+
+/// Compact video attachments currently use the macOS helper.
+pub(crate) fn register_video_attachments(_request: &str) -> std::io::Result<Option<String>> {
+    Ok(None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2273,14 +2283,4 @@ mod tests {
         assert!(argv[2].contains("EDITOR:-vi"));
         assert!(argv[2].contains("/tmp/herdr scrollback.txt"));
     }
-}
-
-/// Native image panels are currently provided by the macOS client.
-pub(crate) fn open_image_preview(_request: &str) -> std::io::Result<bool> {
-    Ok(false)
-}
-
-/// Compact video attachments currently use the macOS helper.
-pub(crate) fn register_video_attachments(_request: &str) -> std::io::Result<Option<String>> {
-    Ok(None)
 }
