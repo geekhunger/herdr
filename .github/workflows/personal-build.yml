@@ -58,7 +58,10 @@ jobs:
           if ! brew list coreutils >/dev/null 2>&1; then
             brew install coreutils
           fi
-          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
+          checksum_tools="$RUNNER_TEMP/herdr-checksum-tools"
+          mkdir -p "$checksum_tools"
+          ln -s "$(brew --prefix coreutils)/libexec/gnubin/sha256sum" "$checksum_tools/sha256sum"
+          echo "$checksum_tools" >> "$GITHUB_PATH"
       - name: Python tests
         shell: bash
         run: |
