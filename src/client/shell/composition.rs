@@ -35,6 +35,7 @@ impl ClientShellState {
         } else {
             Rect::new(0, 1, cols, rows.saturating_sub(2))
         };
+        let full_sidebar = sidebar;
         let (sidebar, schedules_area) = super::schedules::sections(
             sidebar,
             self.sidebar_collapsed || layout.sidebar.width == 0 || !self.schedules.visible(),
@@ -107,6 +108,12 @@ impl ClientShellState {
             schedules_area,
             &self.schedules,
             &self.config.palette,
+        );
+        render::render_expanded_sidebar_toggle(
+            &mut buffer,
+            full_sidebar,
+            &self.config.palette,
+            &mut self.hits,
         );
         if !self.config.mouse_capture {
             self.hits = ShellHitMap::default();
@@ -425,7 +432,7 @@ impl ClientShellState {
             frame.replace_from_ratatui_buffer_preserving_effects(&composed, cursor);
         }
         self.render_link_hover(&mut frame, &mut occlusion);
-        if self.mode == ClientShellMode::Copy {
+        if self.mode == ClientShellMode::Copy && self.transcript.copy.is_none() {
             frame.cursor = None;
             if let Some(copy_mode) = self.copy_mode.as_ref() {
                 if let Some(hit) = self.hits.panes.iter().find(|hit| {
@@ -464,6 +471,24 @@ impl ClientShellState {
         }
         restore_mode_bar(&mut frame, mode_bar, mode_bar_cells.as_deref());
         self.hits.notification_toast = Rect::default();
+        let transcript_visible = self.transcript_visible();
+        let transcript_blocked = transcript_visible
+            && self.snapshot.as_ref().is_some_and(|snapshot| {
+                snapshot.agents.iter().any(|agent| {
+                    Some(&agent.pane_id) == snapshot.focused_pane_id.as_ref()
+                        && agent.agent_status == crate::api::schema::AgentStatus::Blocked
+                })
+            });
+        if let Some(area) = self.transcript.render(
+            transcript_visible,
+            transcript_blocked,
+            surface,
+            &self.hits,
+            &self.config.palette,
+            &mut frame,
+        ) {
+            occlusion.cover(area);
+        }
         let has_config_diagnostic = self.config_diagnostic.is_some();
         let active_lifecycle = self
             .endpoints

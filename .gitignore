@@ -26,3 +26,8 @@ __pycache__/
 
 /.wrangler/
 **/.wrangler/
+
+# Local macOS image preview build products
+/scripts/image-preview/HerdrImagePreview
+/scripts/image-preview/HerdrImagePreview.app/Contents/MacOS/HerdrImagePreview
+/scripts/image-preview/HerdrImagePreview.app/Contents/_CodeSignature/

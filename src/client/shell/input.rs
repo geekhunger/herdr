@@ -274,6 +274,7 @@ impl ClientShellState {
                         if self.insert_overlay_text(&text) {
                             outcome.repaint = true;
                         } else if self.overlay.is_none() && self.mode == ClientShellMode::Terminal {
+                            let text = self.compact_video_paste(text);
                             self.push_focused_pane_event(
                                 ClientPaneInputEvent::TextCommit(text),
                                 &mut outcome,
@@ -307,6 +308,7 @@ impl ClientShellState {
                         if self.insert_overlay_text(&text) {
                             outcome.repaint = true;
                         } else if self.overlay.is_none() && self.mode == ClientShellMode::Terminal {
+                            let text = self.compact_video_paste(text);
                             self.push_focused_pane_event(
                                 ClientPaneInputEvent::Paste(text),
                                 &mut outcome,
@@ -413,6 +415,7 @@ impl ClientShellState {
                 let target = self.route_key_press(&key, outcome);
                 if let Some(target) = target.as_ref() {
                     self.reply_selection = None;
+                    self.observe_image_draft_key(target, &key);
                     self.push_pane_key(target.clone(), key.clone(), outcome);
                 }
                 let resulting_context = self.input_context();
@@ -658,6 +661,9 @@ impl ClientShellState {
         if matches!(key.code, KeyCode::Modifier(_)) {
             return None;
         }
+        if self.route_transcript_key(key, outcome) {
+            return None;
+        }
         self.word_selection_gesture = None;
         if self.mode != ClientShellMode::Copy
             && self.copy_or_terminal_mode() != ClientShellMode::Copy
@@ -710,6 +716,15 @@ impl ClientShellState {
                 if self.config.keybinds.matches_prefix(key) {
                     self.mode = return_mode;
                     outcome.repaint = true;
+                    if let Some(
+                        binding @ crate::input::KeybindMatch::Action(
+                            crate::input::KeybindAction::OpenNavigator,
+                        ),
+                    ) = crate::input::resolve_prefix_binding(&self.config.keybinds.keybinds, key)
+                    {
+                        self.record_binding(binding, outcome);
+                        return None;
+                    }
                     return self.focused_pane_id().map(ClientInputTarget::Pane);
                 }
                 if key.code == KeyCode::Esc {

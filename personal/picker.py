@@ -72,6 +72,7 @@ def load_items(binary, kind, workspace):
         agents = request("agent")["agents"]
         workspaces = {w["workspace_id"]: w for w in request("workspace")["workspaces"]}
         tabs = {t["tab_id"]: t for t in request("tab")["tabs"]}
+        space_positions = {space["workspace_id"]: position for position, space in enumerate(sorted(workspaces.values(), key=lambda item: item["number"]), 1)}
         agents.sort(key=lambda agent: (
             workspaces.get(agent["workspace_id"], {}).get("number", 999999),
             tabs.get(agent["tab_id"], {}).get("number", 999999),
@@ -84,7 +85,7 @@ def load_items(binary, kind, workspace):
             tab = tabs.get(agent["tab_id"], {})
             state = states.get(agent.get("agent_status"), "unknown")
             name = agent.get("name") or agent.get("terminal_title_stripped") or agent["agent"]
-            location = f"{space.get('number', '?')}:{space.get('label', agent['workspace_id'])}"
+            location = f"{space_positions.get(agent['workspace_id'], '?')}:{space.get('label', agent['workspace_id'])}"
             label = f"{state} · {name[:18]} · {location} / {tab.get('label', agent['tab_id'])}"
             items.append({"number": number, "label": label,
                           "focused": agent.get("focused", False), "target": agent["pane_id"]})
@@ -96,8 +97,9 @@ def load_items(binary, kind, workspace):
          if kind == "workspace" or item["workspace_id"] == workspace),
         key=lambda item: item["number"],
     )
-    for item in items:
+    for position, item in enumerate(items, 1):
         item["target"] = item[kind + "_id"]
+        item["number"] = position
     return items
 
 

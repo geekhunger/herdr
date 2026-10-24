@@ -965,3 +965,100 @@ fn resize_mode_reuses_endpoint_resize_and_stays_active_until_done() {
     assert!(state.handle_input_bytes(b"\r").actions.is_empty());
     assert_eq!(state.mode, ClientShellMode::Terminal);
 }
+
+#[test]
+fn direct_scrollback_search_and_double_prefix_navigator_remain_separate() {
+    let config: Config = toml::from_str(
+        "[keys]\nprefix = \"ctrl+f\"\ngoto = \"prefix+ctrl+f\"\ncopy_search = \"prefix+f\"\n",
+    )
+    .unwrap();
+    assert!(config.collect_diagnostics().is_empty());
+    for batched in [true, false] {
+        let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
+        state.set_snapshot(Box::new(snapshot()));
+        let mut pane_surface = surface();
+        pane_surface.panes[0].scroll = Some(crate::protocol::PaneSurfaceScrollMetrics {
+            offset_from_bottom: 0,
+            max_offset_from_bottom: 20,
+            viewport_rows: 2,
+        });
+        state.set_pane_surface(pane_surface);
+        state.compose(106, 20).unwrap();
+        if batched {
+            state.handle_input_bytes(b"\x06f");
+        } else {
+            state.handle_input_bytes(b"\x06");
+            state.handle_input_bytes(b"f");
+        }
+        assert_eq!(state.mode, ClientShellMode::Copy);
+        assert!(state.overlay.is_none());
+        let prompt = state
+            .copy_mode
+            .as_ref()
+            .unwrap()
+            .search_prompt
+            .as_ref()
+            .unwrap();
+        assert_eq!(
+            prompt.direction,
+            crate::api::schema::PaneCopySearchDirection::Backward
+        );
+        assert!(prompt.query.is_empty());
+        state.handle_input_bytes(b"kl");
+        assert_eq!(
+            state
+                .copy_mode
+                .as_ref()
+                .unwrap()
+                .search_prompt
+                .as_ref()
+                .unwrap()
+                .query
+                .as_str(),
+            "kl"
+        );
+        state.handle_input_bytes(b"\x1b");
+        state.handle_input_bytes(b"\x1b");
+        assert_eq!(state.mode, ClientShellMode::Terminal);
+        state.handle_input_bytes(b"\x06\x06");
+        assert!(matches!(
+            state.overlay,
+            Some(ClientShellOverlay::Navigator(_))
+        ));
+    }
+}
+
+#[test]
+fn explicit_double_prefix_opens_navigator_and_default_double_prefix_is_forwarded() {
+    use crate::input::TerminalKey;
+    for configured in [true, false] {
+        let text = if configured {
+            "[keys]\nprefix = \"ctrl+f\"\ngoto = \"prefix+ctrl+f\"\n"
+        } else {
+            "[keys]\nprefix = \"ctrl+f\"\n"
+        };
+        let config: Config = toml::from_str(text).unwrap();
+        assert!(
+            config.collect_diagnostics().is_empty(),
+            "{:?}",
+            config.collect_diagnostics()
+        );
+        let mut state = ClientShellState::new(ClientShellConfig::from_config(&config));
+        state.set_snapshot(Box::new(snapshot()));
+        state.set_pane_surface(surface());
+        state.compose(106, 20).unwrap();
+        let result = state.handle_raw_events(vec![
+            RawInputEvent::Key(TerminalKey::new(KeyCode::Char('f'), KeyModifiers::CONTROL)),
+            RawInputEvent::Key(TerminalKey::new(KeyCode::Char('f'), KeyModifiers::CONTROL)),
+        ]);
+        assert_eq!(
+            matches!(state.overlay, Some(ClientShellOverlay::Navigator(_))),
+            configured
+        );
+        if configured {
+            assert!(result.requests.is_empty());
+        } else {
+            assert!(!result.requests.is_empty());
+        }
+    }
+}

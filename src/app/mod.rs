@@ -2361,7 +2361,7 @@ mod tests {
     }
 
     #[test]
-    fn tab_info_number_uses_stable_public_tab_number() {
+    fn tab_info_number_tracks_current_position_after_closing_a_tab() {
         let mut app = test_app();
         let mut workspace = Workspace::test_new("api-tab-public-number");
         let removed_tab = workspace.test_add_tab(None);
@@ -2379,7 +2379,7 @@ mod tests {
         let tab = app.tab_info(0, survivor_idx).unwrap();
 
         assert_eq!(tab.tab_id, format!("{}:t3", app.state.workspaces[0].id));
-        assert_eq!(tab.number, 3);
+        assert_eq!(tab.number, 2);
         assert_eq!(tab.label, "2");
     }
 

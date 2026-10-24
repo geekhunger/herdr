@@ -151,7 +151,7 @@ fn grouped_worktrees_render_parent_branch_and_indented_child() {
         + usize::from(parent.x.saturating_add(1));
     assert_eq!(
         collapsed.cells[status_cell].fg,
-        crate::protocol::color_to_u32(state.config.palette.red)
+        crate::protocol::color_to_u32(STATUS_RED)
     );
 
     let mut next = ClientShellInput::default();
@@ -219,7 +219,7 @@ fn duplicate_repo_parents_remain_visible_and_focusable_when_collapsed() {
                 usize::from(parent.y) * usize::from(frame.width) + usize::from(parent.x + 1);
             assert_ne!(
                 frame.cells[status_cell].fg,
-                crate::protocol::color_to_u32(state.config.palette.red)
+                crate::protocol::color_to_u32(STATUS_RED)
             );
             assert_eq!(
                 state

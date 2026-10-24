@@ -1201,6 +1201,63 @@ pub fn process_exists(pid: u32) -> bool {
     }
 }
 
+/// Native image panel works even when the host terminal cannot display Kitty graphics.
+pub(crate) fn open_image_preview(request: &str) -> std::io::Result<bool> {
+    use std::io::Write;
+    let helper = crate::config::config_dir().join("scripts/image-preview/resolve.py");
+    if !helper.is_file() {
+        return Ok(false);
+    }
+    let mut child = Command::new("/usr/bin/python3")
+        .arg(helper)
+        .arg("--request-stdin")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    let request = request.as_bytes().to_vec();
+    // Large image data travels over stdin, outside the terminal input thread.
+    std::thread::spawn(move || {
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(&request);
+        }
+        let _ = child.wait();
+    });
+    Ok(true)
+}
+
+/// Called only for explicit video pastes, never while composing terminal frames.
+pub(crate) fn register_video_attachments(request: &str) -> std::io::Result<Option<String>> {
+    use std::io::Write;
+    let helper = crate::config::config_dir().join("scripts/image-preview/resolve.py");
+    if !helper.is_file() {
+        return Ok(None);
+    }
+    let mut child = Command::new("/usr/bin/python3")
+        .arg(helper)
+        .arg("--register-video")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(request.as_bytes())?;
+    }
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    if let Some(error) = value.get("error").and_then(|v| v.as_str()) {
+        return Err(std::io::Error::other(error));
+    }
+    Ok(value
+        .get("text")
+        .and_then(|v| v.as_str())
+        .filter(|v| v.len() < 8192)
+        .map(str::to_owned))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

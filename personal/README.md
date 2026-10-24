@@ -72,11 +72,19 @@ Prefix ist **Ctrl+F**. Anschließend die Taste ohne festgehaltenen Prefix drück
 | W | Workspace-Auswahl |
 | A | Agent-Auswahl |
 | C | Schedules verwalten |
-| F | Goto-Picker |
+| F | Rückwärtssuche im Gespräch / Scrollback |
+| Ctrl+F | Goto-Picker |
+| 1–9 | Tab nach aktueller Position |
+| Shift+1–9 | Workspace nach aktueller Position |
+| Alt+1–9 | Agent auswählen |
 | Shift+T / Shift+W | Tab / Workspace umbenennen |
 | q, ohne Ctrl | Nur Herdr-Oberfläche trennen; danach mit `herdr` wieder verbinden |
 
 In Tab-/Workspace-/Agent-Auswahlen funktionieren ↑/↓, Tab/Shift+Tab, Enter und die Zahlen 1–9. Für den zehnten oder weitere Einträge die Pfeiltasten verwenden. Die Dialoge enthalten keine fest eingebauten Benutzerpfade. Die Tastaturübersicht und Details zum Scheduler stehen in [schedules/README.md](schedules/README.md).
+
+## Lokale Medien- und Gesprächsansicht
+
+Die zusätzlichen Quellen unter `scripts/image-preview/` und `scripts/transcript/` sowie `src/client/shell/transcript/` erhalten die lokale macOS-Medienvorschau und die gefaltete Codex-Gesprächsansicht. Ctrl+T klappt Werkzeugdetails auf oder zu; Suche, Auswahl und Reply beziehen sich auf den sichtbaren Gesprächsinhalt. Codeblöcke und aufgeklappte Werkzeugdetails behalten ihre Syntaxfarben. Die nativen Helfer werden separat gebaut und eingerichtet; `personal/setup.py` installiert sie derzeit nicht. Die Medienvorschau verwendet einen lokalen AppKit-Helfer und schließt mit Esc oder einem Klick außerhalb. Der lokale Vorschau-Installer ergänzt Ctrl+F → i. Binärdateien, Konfigurationen, Anhänge und Gesprächsdaten bleiben lokal.
 
 ## Was 1:1 wiederhergestellt wird
 

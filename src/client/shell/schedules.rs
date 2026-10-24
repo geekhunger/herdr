@@ -177,9 +177,76 @@ pub(super) fn render(buffer: &mut Buffer, area: Rect, data: &Schedules, palette:
     }
 }
 
+impl ClientShellState {
+    pub(crate) fn tick_schedules(&mut self, now: Instant) -> bool {
+        self.schedules.refresh(now)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sidebar_toggle_stays_at_window_bottom_with_schedules() {
+        for rows in [14, 28, 44] {
+            for unavailable in [false, true] {
+                for remote in [false, true] {
+                    let mut state =
+                        ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+                    if remote {
+                        state.set_endpoint_catalog(&[crate::client::endpoint::SavedSshEndpoint {
+                            id: crate::client::endpoint::ProfileId::parse(
+                                "0123456789abcdef0123456789abcdef",
+                            )
+                            .unwrap(),
+                            label: "Build".into(),
+                            target: "build.example".into(),
+                            session: "qa".into(),
+                            enabled: true,
+                        }]);
+                    }
+                    state.set_snapshot(Box::new(super::super::tests::snapshot()));
+                    if !unavailable {
+                        state.set_pane_surface(super::super::tests::surface());
+                    }
+                    state.schedules = Schedules {
+                        path: None,
+                        checked_at: Some(Instant::now()),
+                        snapshot: None,
+                        healthy: true,
+                    };
+                    let frame = state.compose(106, rows).expect("sidebar frame");
+                    let area = state.layout(106, rows).sidebar;
+                    let toggle = state.hits.sidebar_toggle;
+                    assert_eq!(toggle, Rect::new(area.right() - 2, rows - 1, 1, 1));
+                    let buffer = frame.to_ratatui_buffer().unwrap();
+                    assert_eq!(buffer[(toggle.x, toggle.y)].symbol(), "«");
+                    assert_eq!(
+                        buffer
+                            .content()
+                            .iter()
+                            .filter(|cell| cell.symbol() == "«")
+                            .count(),
+                        1
+                    );
+                    let outcome =
+                        state.handle_raw_events(vec![crate::raw_input::RawInputEvent::Mouse(
+                            crossterm::event::MouseEvent {
+                                kind: crossterm::event::MouseEventKind::Down(
+                                    crossterm::event::MouseButton::Left,
+                                ),
+                                column: toggle.x,
+                                row: toggle.y,
+                                modifiers: crossterm::event::KeyModifiers::empty(),
+                            },
+                        )]);
+                    assert!(state.sidebar_collapsed);
+                    assert!(outcome.resize && outcome.repaint);
+                }
+            }
+        }
+    }
 
     #[test]
     fn panel_geometry_preserves_agent_and_workspace_space() {
@@ -226,21 +293,23 @@ mod tests {
 
     #[test]
     fn overview_renders_status_and_overflow_at_narrow_widths() {
-        let mut data = Schedules::default();
-        data.healthy = true;
-        data.snapshot = Some(Snapshot {
-            generated_at: 0.0,
-            total: 15,
-            active: 1,
-            jobs: (0..15)
-                .map(|n| Job {
-                    name: format!("Job {n}"),
-                    enabled: n == 0,
-                    status: "failed".into(),
-                    next: "26.10. 09:00".into(),
-                })
-                .collect(),
-        });
+        let data = Schedules {
+            healthy: true,
+            snapshot: Some(Snapshot {
+                generated_at: 0.0,
+                total: 15,
+                active: 1,
+                jobs: (0..15)
+                    .map(|n| Job {
+                        name: format!("Job {n}"),
+                        enabled: n == 0,
+                        status: "failed".into(),
+                        next: "26.10. 09:00".into(),
+                    })
+                    .collect(),
+            }),
+            ..Schedules::default()
+        };
         for width in [18, 24, 36] {
             let area = Rect::new(0, 0, width, 10);
             let mut buffer = Buffer::empty(area);
@@ -260,11 +329,5 @@ mod tests {
             assert!(text.contains("! Job 0"));
             assert!(text.contains("+12"));
         }
-    }
-}
-
-impl ClientShellState {
-    pub(crate) fn tick_schedules(&mut self, now: Instant) -> bool {
-        self.schedules.refresh(now)
     }
 }

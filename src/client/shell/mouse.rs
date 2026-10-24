@@ -681,6 +681,10 @@ impl ClientShellState {
     /// Hit-test order determines which overlapping control receives the event;
     /// the sidebar toggle takes precedence over the agent scrollbar beneath it.
     pub(super) fn handle_mouse(&mut self, mouse: MouseEvent, outcome: &mut ClientShellInput) {
+        if self.route_transcript_mouse(mouse, outcome) {
+            self.clear_link_hover();
+            return;
+        }
         self.update_link_hover(mouse, outcome);
         let point = (mouse.column, mouse.row);
         if self.mode == ClientShellMode::Navigate
@@ -2253,6 +2257,12 @@ impl ClientShellState {
                     .find(|hit| super::contains(hit.rect, point))
                     .cloned();
                 if let Some(hit) = pane_hit {
+                    if mouse.modifiers.is_empty()
+                        && (self.open_video_preview_at(&hit, mouse.column, mouse.row, outcome)
+                            || self.open_image_preview_at(&hit, mouse.column, mouse.row, outcome))
+                    {
+                        return;
+                    }
                     // Codex can enable its own mouse selection. Keep unmodified
                     // drags in Herdr so Reply has the actual selected range.
                     let reply_selection = self.config.mouse_capture

@@ -10,6 +10,7 @@ impl ClientShellState {
     }
 
     pub(super) fn enter_copy_mode(&mut self, outcome: &mut ClientShellInput) -> bool {
+        let transcript_copy = self.transcript_visible() && !self.transcript.area.is_empty();
         let pane_id = match self.focused_pane_id() {
             Some(pane_id) => pane_id,
             None => return false,
@@ -98,6 +99,9 @@ impl ClientShellState {
             copy_after_search: false,
         });
         self.mode = ClientShellMode::Copy;
+        if transcript_copy {
+            self.start_transcript_copy();
+        }
         true
     }
 
@@ -106,6 +110,9 @@ impl ClientShellState {
         key: &crate::input::TerminalKey,
         outcome: &mut ClientShellInput,
     ) {
+        if self.route_transcript_copy_key(key, outcome) {
+            return;
+        }
         if self.route_copy_search_prompt_key(key, outcome) {
             return;
         }
@@ -224,6 +231,10 @@ impl ClientShellState {
         let Some(command) = crate::copy_mode::copy_mode_command_char(key.clone()) else {
             return;
         };
+        let has_search = self
+            .copy_mode
+            .as_ref()
+            .is_some_and(|copy_mode| !copy_mode.search_query.is_empty());
         match command {
             'q' => self.exit_copy_mode(false, outcome),
             'y' => {
@@ -235,6 +246,14 @@ impl ClientShellState {
             'V' => self.begin_copy_selection(true),
             'h' => self.move_copy_cursor(0, -1, outcome),
             'j' => self.move_copy_cursor(1, 0, outcome),
+            'k' | 'L' if has_search => self.repeat_copy_search(
+                crate::api::schema::PaneCopySearchDirection::Forward,
+                outcome,
+            ),
+            'l' | 'K' if has_search => self.repeat_copy_search(
+                crate::api::schema::PaneCopySearchDirection::Backward,
+                outcome,
+            ),
             'k' => self.move_copy_cursor(-1, 0, outcome),
             'l' => self.move_copy_cursor(0, 1, outcome),
             'g' => self.move_copy_history(true, outcome),
@@ -250,8 +269,14 @@ impl ClientShellState {
             }
             '/' => self.open_copy_search(crate::api::schema::PaneCopySearchDirection::Forward),
             '?' => self.open_copy_search(crate::api::schema::PaneCopySearchDirection::Backward),
-            'n' => self.repeat_copy_search(false, outcome),
-            'N' => self.repeat_copy_search(true, outcome),
+            'n' => self.repeat_copy_search(
+                crate::api::schema::PaneCopySearchDirection::Forward,
+                outcome,
+            ),
+            'N' => self.repeat_copy_search(
+                crate::api::schema::PaneCopySearchDirection::Backward,
+                outcome,
+            ),
             'w' => {
                 self.request_copy_motion(crate::api::schema::PaneCopyMotion::NextWordStart, outcome)
             }
@@ -338,7 +363,10 @@ impl ClientShellState {
         true
     }
 
-    fn open_copy_search(&mut self, direction: crate::api::schema::PaneCopySearchDirection) {
+    pub(super) fn open_copy_search(
+        &mut self,
+        direction: crate::api::schema::PaneCopySearchDirection,
+    ) {
         let Some(copy_mode) = self.copy_mode.as_mut() else {
             return;
         };
@@ -348,28 +376,17 @@ impl ClientShellState {
         });
     }
 
-    fn repeat_copy_search(&mut self, reverse: bool, outcome: &mut ClientShellInput) {
+    fn repeat_copy_search(
+        &mut self,
+        direction: crate::api::schema::PaneCopySearchDirection,
+        outcome: &mut ClientShellInput,
+    ) {
         let Some(copy_mode) = self.copy_mode.as_ref() else {
             return;
         };
         if copy_mode.search_query.is_empty() {
             return;
         }
-        let Some(direction) = copy_mode.search_direction else {
-            return;
-        };
-        let direction = if reverse {
-            match direction {
-                crate::api::schema::PaneCopySearchDirection::Forward => {
-                    crate::api::schema::PaneCopySearchDirection::Backward
-                }
-                crate::api::schema::PaneCopySearchDirection::Backward => {
-                    crate::api::schema::PaneCopySearchDirection::Forward
-                }
-            }
-        } else {
-            direction
-        };
         self.request_copy_search(copy_mode.search_query.clone(), direction, true, outcome);
     }
 
@@ -518,7 +535,63 @@ impl ClientShellState {
             .cloned()
     }
 
+    // Codex owns its scrollback when the host terminal reports no history.
+    // At a viewport edge, scroll that application while keeping the copy cursor
+    // on the edge; keys inside the viewport remain local cursor movements.
+    fn scroll_application_copy_edge(
+        &mut self,
+        direction: i16,
+        outcome: &mut ClientShellInput,
+    ) -> bool {
+        let Some(copy) = self.copy_mode.as_ref() else {
+            return false;
+        };
+        if copy.max_offset_from_bottom != 0 || !self.reply_pane_ready(&copy.pane_id) {
+            return false;
+        }
+        let bottom = u32::from(copy.geometry.1.saturating_sub(2));
+        let edge = if direction < 0 {
+            copy.cursor.row == 0
+        } else {
+            copy.cursor.row >= bottom
+        };
+        let Some(_hit) = self.copy_hit().filter(|hit| hit.mouse_reporting) else {
+            return false;
+        };
+        if !edge {
+            return false;
+        }
+        let pane_id = copy.pane_id.clone();
+        let column = copy.cursor.col;
+        let row = copy.cursor.row.min(bottom) as u16;
+        if let Some(copy) = self.copy_mode.as_mut() {
+            copy.cursor.row = u32::from(row);
+            copy.selection = None;
+        }
+        self.selection = None;
+        push_target_event(
+            ClientInputTarget::Pane(pane_id),
+            ClientPaneInputEvent::Mouse {
+                kind: if direction < 0 {
+                    crate::protocol::ClientMouseKind::ScrollUp
+                } else {
+                    crate::protocol::ClientMouseKind::ScrollDown
+                },
+                position: ClientMousePosition::Cell { column, row },
+                geometry: None,
+                modifiers: 0,
+                lines: 1,
+            },
+            outcome,
+        );
+        outcome.repaint = true;
+        true
+    }
+
     fn move_copy_cursor(&mut self, row_delta: i16, col_delta: i16, outcome: &mut ClientShellInput) {
+        if row_delta != 0 && self.scroll_application_copy_edge(row_delta, outcome) {
+            return;
+        }
         let Some(copy_mode) = self.copy_mode.as_mut() else {
             return;
         };
@@ -551,7 +624,7 @@ impl ClientShellState {
                 .saturating_add(u32::from(row_delta as u16))
                 .min(total_rows.saturating_sub(1).min(u32::MAX as usize) as u32);
         }
-        self.reveal_copy_cursor(outcome, false);
+        self.reveal_copy_cursor(outcome, true);
         self.sync_copy_selection();
         outcome.repaint = true;
     }
@@ -819,13 +892,16 @@ impl ClientShellState {
             return false;
         }
         copy_mode.cursor = cursor;
-        self.reveal_copy_cursor(outcome, false);
+        self.reveal_copy_cursor(outcome, true);
         self.sync_copy_selection();
         outcome.repaint = true;
         true
     }
 
     pub(super) fn exit_copy_mode(&mut self, copy: bool, outcome: &mut ClientShellInput) {
+        if self.exit_transcript_copy(copy, outcome) {
+            return;
+        }
         let live_selection = self
             .selection
             .as_ref()

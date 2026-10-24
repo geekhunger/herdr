@@ -10,6 +10,7 @@ auto_switch = false
 [keys]
 prefix = "ctrl+f"
 copy_mode = "prefix+y"
+copy_search = "prefix+f"
 close_tab = "prefix+ctrl+w"
 new_tab = "prefix+ctrl+t"
 new_workspace = "prefix+ctrl+n"
@@ -18,9 +19,11 @@ previous_tab = ["prefix+p", "prefix+left"]
 next_tab = ["prefix+n", "prefix+right"]
 previous_workspace = "prefix+up"
 next_workspace = "prefix+down"
-goto = "prefix+f"
+goto = "prefix+ctrl+f"
+focus_agent = "prefix+alt+1..9"
+switch_workspace = "prefix+shift+1..9"
 workspace_picker = ""
-switch_tab = ""
+switch_tab = "prefix+1..9"
 
 [[keys.command]]
 key = "prefix+t"

@@ -20,6 +20,7 @@ mod endpoints;
 pub(super) use endpoints::*;
 mod global_menu;
 mod graphics;
+mod image_preview;
 mod input;
 mod input_source;
 mod link_hover;
@@ -37,6 +38,8 @@ mod settings;
 mod state;
 mod surface_patch;
 mod text_editor;
+mod transcript;
+mod video_attachments;
 mod word_selection;
 mod worktrees;
 use text_editor::TextEditor;
@@ -225,16 +228,20 @@ fn status_text(status: crate::api::schema::AgentStatus) -> &'static str {
     }
 }
 
+const STATUS_GREEN: ratatui::style::Color = ratatui::style::Color::Rgb(57, 239, 89);
+const STATUS_RED: ratatui::style::Color = ratatui::style::Color::Rgb(255, 87, 102);
+const STATUS_YELLOW: ratatui::style::Color = ratatui::style::Color::Rgb(255, 214, 0);
+
 fn status_color(
     status: crate::api::schema::AgentStatus,
     palette: &Palette,
 ) -> ratatui::style::Color {
     use crate::api::schema::AgentStatus;
     match status {
-        AgentStatus::Working => palette.yellow,
-        AgentStatus::Blocked => palette.red,
+        AgentStatus::Working => STATUS_YELLOW,
+        AgentStatus::Blocked => STATUS_RED,
         AgentStatus::Done => palette.teal,
-        AgentStatus::Idle => palette.green,
+        AgentStatus::Idle => STATUS_GREEN,
         AgentStatus::Unknown => palette.overlay0,
     }
 }

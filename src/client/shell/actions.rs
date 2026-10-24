@@ -169,6 +169,15 @@ impl ClientShellState {
                     }
                     return;
                 }
+                if action == crate::input::KeybindAction::CopySearch {
+                    if self.enter_copy_mode(outcome) {
+                        self.open_copy_search(
+                            crate::api::schema::PaneCopySearchDirection::Backward,
+                        );
+                        outcome.repaint = true;
+                    }
+                    return;
+                }
                 if self.handle_endpoint_navigation(action, outcome) {
                     return;
                 }

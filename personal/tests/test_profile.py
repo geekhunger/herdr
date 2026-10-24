@@ -15,7 +15,10 @@ class ProfileTest(unittest.TestCase):
         template = (PROFILE / "config.toml.in").read_text(encoding="utf-8")
         for binding in ['prefix = "ctrl+f"', 'close_tab = "prefix+ctrl+w"',
                         'new_workspace = "prefix+ctrl+n"', 'close_workspace = "prefix+ctrl+q"',
-                        'new_tab = "prefix+ctrl+t"', 'key = "prefix+c"',
+                        'new_tab = "prefix+ctrl+t"', 'copy_search = "prefix+f"',
+                        'goto = "prefix+ctrl+f"', 'focus_agent = "prefix+alt+1..9"',
+                        'switch_workspace = "prefix+shift+1..9"', 'switch_tab = "prefix+1..9"',
+                        'key = "prefix+c"',
                         'key = "prefix+a"', 'key = "prefix+w"', 'key = "prefix+t"']:
             self.assertIn(binding, template)
         self.assertNotIn("/Users/", template)

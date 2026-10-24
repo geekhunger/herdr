@@ -60,6 +60,8 @@ fn fast_path_blocker(
 ) -> Option<&'static str> {
     if state.mode != ClientShellMode::Terminal {
         Some("client_surface_patch.fallback.mode")
+    } else if state.transcript_visible() {
+        Some("client_surface_patch.fallback.transcript")
     } else if state.overlay.is_some() {
         Some("client_surface_patch.fallback.overlay")
     } else if state.endpoint_error.is_some() {

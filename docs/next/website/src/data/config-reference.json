@@ -716,6 +716,12 @@
           "description": "Enter keyboard copy mode for the focused pane."
         },
         {
+          "key": "keys.copy_search",
+          "type": "keybinding",
+          "default": "unset",
+          "description": "Open backward scrollback search directly. For example, copy_search = \"prefix+f\"."
+        },
+        {
           "key": "keys.focus_pane_left",
           "type": "keybinding",
           "default": "\"prefix+h\"",

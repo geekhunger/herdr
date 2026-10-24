@@ -72,6 +72,7 @@ impl ClientShellState {
             outcome.repaint = true;
             return true;
         }
+        self.image_drafts.remove(&pane_id);
         self.reply_selection = None;
         self.pending_reply_paste = None;
         self.selection = None;

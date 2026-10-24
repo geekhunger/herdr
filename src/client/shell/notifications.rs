@@ -87,7 +87,7 @@ pub(super) fn render_mobile_notification_banner(
         SemanticNotificationKind::Custom => event.title.clone(),
     };
     let dot_color = match event.kind {
-        SemanticNotificationKind::NeedsAttention => palette.red,
+        SemanticNotificationKind::NeedsAttention => STATUS_RED,
         SemanticNotificationKind::Finished => palette.blue,
         SemanticNotificationKind::UpdateInstalled | SemanticNotificationKind::Custom => {
             palette.accent
@@ -187,7 +187,7 @@ pub(super) fn render_visible_notification(
 ) -> Rect {
     let event = &notification.event;
     let dot_color = match event.kind {
-        SemanticNotificationKind::NeedsAttention => palette.red,
+        SemanticNotificationKind::NeedsAttention => STATUS_RED,
         SemanticNotificationKind::Finished => palette.blue,
         SemanticNotificationKind::UpdateInstalled | SemanticNotificationKind::Custom => {
             palette.accent

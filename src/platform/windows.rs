@@ -5456,3 +5456,13 @@ mod tests {
         }
     }
 }
+
+/// Native image panels are currently provided by the macOS client.
+pub(crate) fn open_image_preview(_request: &str) -> std::io::Result<bool> {
+    Ok(false)
+}
+
+/// Compact video attachments currently use the macOS helper.
+pub(crate) fn register_video_attachments(_request: &str) -> std::io::Result<Option<String>> {
+    Ok(None)
+}

@@ -859,9 +859,11 @@ pub(super) struct ClientCopyModeState {
 }
 
 pub(crate) struct ClientShellState {
+    pub(super) image_drafts: HashMap<String, Vec<crate::platform::ClipboardImage>>,
     pub(super) pending_reply_paste: Option<super::reply_selection::ReplyPaste>,
     pub(super) reply_selection: Option<super::reply_selection::ReplySelection>,
     pub(super) schedules: super::schedules::Schedules,
+    pub(super) transcript: super::transcript::Transcript,
     pub(super) machine_diagnostics: super::machine_diagnostics::MachineDiagnostics,
     pub(super) config: ClientShellConfig,
     pub(super) snapshot: Option<Box<ClientShellSnapshot>>,
@@ -1035,6 +1037,7 @@ impl ClientShellState {
                 .extend(saved.collapsed_groups);
         }
         Self {
+            image_drafts: HashMap::new(),
             pending_reply_paste: None,
             reply_selection: None,
             schedules: Default::default(),
@@ -1082,6 +1085,7 @@ impl ClientShellState {
             active_endpoint_id: ClientEndpointId::Local,
             collapsed_endpoints: HashSet::new(),
             mode: ClientShellMode::Terminal,
+            transcript: super::transcript::Transcript::default(),
             navigate_workspace_id: None,
             pending_workspace_highlight: None,
             reveal_navigation_workspace: false,
@@ -1777,7 +1781,8 @@ impl ClientShellState {
             }
         }
         let mut invalidated_copy_pane = None;
-        if let Some(copy_mode) = self.copy_mode.as_mut() {
+        let transcript_copy = self.transcript.copy.is_some();
+        if let Some(copy_mode) = self.copy_mode.as_mut().filter(|_| !transcript_copy) {
             if let Some(pane) = surface
                 .panes
                 .iter()

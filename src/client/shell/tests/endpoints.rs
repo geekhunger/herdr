@@ -825,10 +825,7 @@ fn sidebar_renders_local_and_saved_ssh_endpoints_with_status() {
     let buffer = frame.to_ratatui_buffer().expect("frame should reconstruct");
     assert_ne!(buffer[(local.right() - 1, local.y)].symbol(), "●");
     assert_eq!(buffer[(remote.right() - 1, remote.y)].symbol(), "●");
-    assert_eq!(
-        buffer[(remote.right() - 1, remote.y)].fg,
-        state.config.palette.green
-    );
+    assert_eq!(buffer[(remote.right() - 1, remote.y)].fg, STATUS_GREEN);
 
     state.sidebar_collapsed = true;
     let frame = state.compose(100, 28).expect("collapsed endpoint frame");
@@ -923,7 +920,7 @@ fn saved_machine_preserves_endpoint_scoped_worktree_collapses() {
     let buffer = frame.to_ratatui_buffer().expect("frame should reconstruct");
     assert_eq!(buffer[(local_toggle.x, local_toggle.y)].symbol(), "▸");
     assert!((local_parent.rect.x..local_parent.rect.right())
-        .any(|x| buffer[(x, local_parent.rect.y)].fg == state.config.palette.red));
+        .any(|x| buffer[(x, local_parent.rect.y)].fg == STATUS_RED));
 
     assert!(state.activate_endpoint_projection(&remote_id));
     let mut remote_surface = surface();
@@ -1318,7 +1315,7 @@ fn aggregate_agents_use_configured_rows_machine_token_and_status_colors() {
     assert!(buffer
         .content()
         .iter()
-        .any(|cell| cell.symbol() == "×" && cell.fg == state.config.palette.red));
+        .any(|cell| cell.symbol() == "×" && cell.fg == STATUS_RED));
 }
 
 #[test]
@@ -2772,7 +2769,7 @@ fn collapsed_aggregate_workspace_status_uses_its_status_color() {
     let buffer = frame.to_ratatui_buffer().expect("frame buffer");
     assert_eq!(
         buffer[(workspace.x.saturating_add(2), workspace.y)].fg,
-        state.config.palette.red
+        STATUS_RED
     );
 }
 

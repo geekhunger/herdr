@@ -748,6 +748,119 @@ fn shift_vertical_arrows_jump_blocks_and_plain_arrows_move_one_row() {
 }
 
 #[test]
+fn copy_search_match_keys_use_fixed_directions_after_both_prompts() {
+    use crate::api::schema::{PaneCopySearchDirection, PaneTextPoint, PaneTextRange};
+
+    for prompt in ['/', '?'] {
+        let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+        state.set_snapshot(Box::new(snapshot()));
+        let mut pane_surface = surface();
+        pane_surface.panes[0].scroll = Some(crate::protocol::PaneSurfaceScrollMetrics {
+            offset_from_bottom: 0,
+            max_offset_from_bottom: 0,
+            viewport_rows: 2,
+        });
+        state.set_pane_surface(pane_surface);
+        state.compose(160, 20).expect("composed frame");
+        state.enter_copy_mode(&mut ClientShellInput::default());
+        let key = |ch, modifiers| {
+            RawInputEvent::Key(crate::input::TerminalKey::new(KeyCode::Char(ch), modifiers))
+        };
+        state.handle_raw_events(vec![key(prompt, KeyModifiers::empty())]);
+        state.handle_raw_events(vec![
+            key('k', KeyModifiers::empty()),
+            key('l', KeyModifiers::empty()),
+        ]);
+        let submitted = state.handle_raw_events(vec![RawInputEvent::Key(
+            crate::input::TerminalKey::new(KeyCode::Enter, KeyModifiers::empty()),
+        )]);
+        let [ClientShellAction::Endpoint { request, .. }] = &submitted.actions[..] else {
+            panic!("submit search");
+        };
+        let crate::api::schema::Method::PaneCopySearch(params) = &request.method else {
+            panic!("search request");
+        };
+        assert_eq!(
+            params.query, "kl",
+            "match keys remain editable in the prompt"
+        );
+        assert_eq!(
+            params.direction,
+            if prompt == '/' {
+                PaneCopySearchDirection::Forward
+            } else {
+                PaneCopySearchDirection::Backward
+            }
+        );
+        let matches: Vec<_> = [(0, 0), (1, 0), (1, 2)]
+            .into_iter()
+            .map(|(row, col)| PaneTextRange {
+                start: PaneTextPoint { row, col },
+                end: PaneTextPoint { row, col: col + 1 },
+            })
+            .collect();
+        let mut current = 1usize;
+        state.handle_endpoint_result(
+            "boot-1",
+            &request.id,
+            Ok(copy_search_result(matches.clone(), Some(current as u32))),
+        );
+
+        for (ch, modifiers, direction) in [
+            ('k', KeyModifiers::empty(), PaneCopySearchDirection::Forward),
+            ('k', KeyModifiers::SHIFT, PaneCopySearchDirection::Backward),
+            (
+                'l',
+                KeyModifiers::empty(),
+                PaneCopySearchDirection::Backward,
+            ),
+            ('l', KeyModifiers::SHIFT, PaneCopySearchDirection::Forward),
+            ('K', KeyModifiers::SHIFT, PaneCopySearchDirection::Backward),
+            ('L', KeyModifiers::SHIFT, PaneCopySearchDirection::Forward),
+            ('n', KeyModifiers::empty(), PaneCopySearchDirection::Forward),
+            ('N', KeyModifiers::SHIFT, PaneCopySearchDirection::Backward),
+        ] {
+            let repeated = state.handle_raw_events(vec![key(ch, modifiers)]);
+            let [ClientShellAction::Endpoint { request, .. }] = &repeated.actions[..] else {
+                panic!("repeat {ch:?} {modifiers:?} after {prompt}");
+            };
+            let crate::api::schema::Method::PaneCopySearch(params) = &request.method else {
+                panic!("repeat search request");
+            };
+            assert_eq!(params.direction, direction, "{ch:?} after {prompt}");
+            assert_eq!(params.previous, Some(matches[current]));
+            current = match direction {
+                PaneCopySearchDirection::Forward => (current + 1) % matches.len(),
+                PaneCopySearchDirection::Backward => (current + matches.len() - 1) % matches.len(),
+            };
+            state.handle_endpoint_result(
+                "boot-1",
+                &request.id,
+                Ok(copy_search_result(matches.clone(), Some(current as u32))),
+            );
+            assert_eq!(
+                state.copy_mode.as_ref().unwrap().cursor,
+                matches[current].start
+            );
+        }
+
+        state.handle_raw_events(vec![RawInputEvent::Key(crate::input::TerminalKey::new(
+            KeyCode::Esc,
+            KeyModifiers::empty(),
+        ))]);
+        let before = state.copy_mode.as_ref().unwrap().cursor;
+        state.handle_raw_events(vec![key('k', KeyModifiers::empty())]);
+        assert_eq!(
+            state.copy_mode.as_ref().unwrap().cursor.row,
+            before.row.saturating_sub(1)
+        );
+        let before = state.copy_mode.as_ref().unwrap().cursor;
+        state.handle_raw_events(vec![key('l', KeyModifiers::empty())]);
+        assert_eq!(state.copy_mode.as_ref().unwrap().cursor.col, before.col + 1);
+    }
+}
+
+#[test]
 fn copy_search_owns_prompt_repeat_highlights_selection_and_restore() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     state.set_snapshot(Box::new(snapshot()));
@@ -2352,5 +2465,79 @@ fn copy_mode_repeat_during_projection_gap_stays_active() {
                 .map(|copy_mode| copy_mode.cursor.row),
             Some(19)
         );
+    }
+}
+
+#[test]
+fn copy_vertical_arrows_reveal_cursor_before_mode_bar_and_scroll_application_history_at_edges() {
+    for application_history in [false, true] {
+        let mut projected = snapshot();
+        if application_history {
+            projected.agents.push(ClientShellAgent {
+                pane_id: "pane_1".into(),
+                workspace_id: "ws_1".into(),
+                tab_id: "tab_1".into(),
+                name: None,
+                display_agent: None,
+                agent: Some("codex".into()),
+                title: None,
+                terminal_title: None,
+                terminal_title_stripped: None,
+                agent_status: AgentStatus::Idle,
+                state_change_seq: 0,
+                state_labels: vec![],
+                tokens: vec![],
+                focused: true,
+            });
+        }
+        let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+        state.set_snapshot(Box::new(projected));
+        let mut frame = surface();
+        frame.frame = FrameData::from_ratatui_buffer(
+            &Buffer::with_lines(["row zero", "row one ", "row two ", "footer  "]),
+            None,
+        );
+        frame.panes[0].inner_rect.width = 8;
+        frame.panes[0].inner_rect.height = 4;
+        frame.panes[0].rect.width = 8;
+        frame.panes[0].rect.height = 4;
+        frame.panes[0].mouse_reporting = application_history;
+        frame.panes[0].scroll = Some(crate::protocol::PaneSurfaceScrollMetrics {
+            offset_from_bottom: 0,
+            max_offset_from_bottom: if application_history { 0 } else { 20 },
+            viewport_rows: 4,
+        });
+        state.set_pane_surface(frame);
+        state.compose(106, 20).unwrap();
+        state.enter_copy_mode(&mut ClientShellInput::default());
+        let copy = state.copy_mode.as_mut().unwrap();
+        copy.offset_from_bottom = if application_history { 0 } else { 10 };
+        copy.cursor.row = if application_history { 0 } else { 10 };
+        let up = state.handle_raw_events(vec![RawInputEvent::Key(crate::input::TerminalKey::new(
+            KeyCode::Up,
+            KeyModifiers::empty(),
+        ))]);
+        if application_history {
+            assert!(up.requests.iter().any(|r| matches!(
+                r,
+                ClientMessage::ClientShellPaneInput { events, .. } if events.iter().any(|event| matches!(event, ClientPaneInputEvent::Mouse {kind: crate::protocol::ClientMouseKind::ScrollUp, lines: 1, ..}))
+            )));
+            assert_eq!(state.copy_mode.as_ref().unwrap().cursor.row, 0);
+            state.copy_mode.as_mut().unwrap().cursor.row = 2;
+            let down = state.handle_raw_events(vec![RawInputEvent::Key(
+                crate::input::TerminalKey::new(KeyCode::Down, KeyModifiers::empty()),
+            )]);
+            assert!(down.requests.iter().any(|r| matches!(r, ClientMessage::ClientShellPaneInput {events, ..} if events.iter().any(|event| matches!(event, ClientPaneInputEvent::Mouse {kind: crate::protocol::ClientMouseKind::ScrollDown, lines: 1, ..})))));
+            assert_eq!(state.copy_mode.as_ref().unwrap().cursor.row, 2);
+        } else {
+            assert_eq!(state.copy_mode.as_ref().unwrap().offset_from_bottom, 11);
+            assert!(!up.actions.is_empty());
+            state.copy_mode.as_mut().unwrap().cursor.row = 11;
+            state.handle_raw_events(vec![RawInputEvent::Key(crate::input::TerminalKey::new(
+                KeyCode::Down,
+                KeyModifiers::empty(),
+            ))]);
+            assert_eq!(state.copy_mode.as_ref().unwrap().offset_from_bottom, 10);
+        }
     }
 }

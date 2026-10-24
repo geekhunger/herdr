@@ -28,6 +28,28 @@ pub(in crate::client::shell) fn render_sidebar_background(
     }
 }
 
+pub(super) fn render_expanded_sidebar_toggle(
+    buffer: &mut Buffer,
+    area: Rect,
+    palette: &Palette,
+    hits: &mut ShellHitMap,
+) {
+    hits.sidebar_toggle = Rect::new(
+        area.right().saturating_sub(2),
+        area.bottom().saturating_sub(1),
+        u16::from(area.width > 1),
+        u16::from(area.height > 0),
+    );
+    put_text(
+        buffer,
+        hits.sidebar_toggle.x,
+        hits.sidebar_toggle.y,
+        hits.sidebar_toggle.width,
+        "«",
+        Style::default().fg(palette.overlay0),
+    );
+}
+
 pub(super) fn render_mode_bar(
     buffer: &mut Buffer,
     pane_area: Rect,
@@ -186,8 +208,8 @@ pub(super) fn render_mode_bar(
                         (" page  ".to_owned(), base),
                         ("/ ?".to_owned(), key),
                         (" search  ".to_owned(), base),
-                        ("n/N".to_owned(), key),
-                        (format!(" repeat{match_status}  "), base),
+                        ("k↓/l↑".to_owned(), key),
+                        (format!(" Shift reverses{match_status}  "), base),
                         ("v/space".to_owned(), key),
                         (format!(" {select}  "), base),
                         ("y/enter".to_owned(), key),
@@ -318,6 +340,9 @@ pub(super) fn render_shell(
             );
         }
         super::schedules::render(buffer, schedules_area, state.schedules, &config.palette);
+        if !state.sidebar_collapsed {
+            render_expanded_sidebar_toggle(buffer, layout.sidebar, &config.palette, &mut hits);
+        }
     }
     if layout.tab_bar.height > 0 {
         render_tab_bar(
