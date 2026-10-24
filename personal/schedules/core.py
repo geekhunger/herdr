@@ -31,36 +31,36 @@ def zoned(timestamp, timezone="Europe/Berlin"):
 
 def normalize_schedule(value):
     if not isinstance(value, dict):
-        raise ValueError("Zeitplan muss ein Objekt sein.")
+        raise ValueError("Schedule must be an object.")
     kind = value.get("type")
     allowed = {"interval": {"type", "minutes"}, "daily": {"type", "time"},
                "weekly": {"type", "time", "days"}, "cron": {"type", "expression"},
                "once": {"type", "at"}}
     if kind not in allowed or set(value) - allowed.get(kind, set()):
-        raise ValueError("Zeitplan: interval, daily, weekly, cron oder once; unbekannte Felder.")
+        raise ValueError("Schedule: interval, daily, weekly, cron or once; unknown fields.")
     result = dict(value)
     if kind == "interval":
         minutes = value.get("minutes")
         if isinstance(minutes, bool) or not isinstance(minutes, (int, float)) or not math.isfinite(minutes) or minutes < 1:
-            raise ValueError("Intervall muss mindestens eine Minute betragen.")
+            raise ValueError("Interval must be at least one minute.")
     if kind in ("daily", "weekly"):
         clock = value.get("time", "")
         if not isinstance(clock, str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", clock):
-            raise ValueError("Uhrzeit bitte als HH:MM angeben.")
+            raise ValueError("Enter time as HH:MM.")
     if kind == "weekly":
         days = value.get("days")
         if not isinstance(days, list) or not days or any(type(d) is not int or not 0 <= d <= 6 for d in days):
-            raise ValueError("Wochentage: Liste von 0 (Montag) bis 6 (Sonntag).")
+            raise ValueError("Weekdays: list from 0 (Monday) to 6 (Sunday).")
         result["days"] = sorted(set(days))
     if kind == "cron":
         expression = value.get("expression", "")
         if not isinstance(expression, str) or len(expression.split()) != 5 or not croniter.is_valid(expression):
-            raise ValueError("Cron-Ausdruck benötigt fünf gültige Felder: Minute Stunde Tag Monat Wochentag.")
+            raise ValueError("Cron expression requires five valid fields: minute hour day month weekday.")
     if kind == "once":
         try:
             dt.datetime.fromisoformat(value["at"].replace("Z", "+00:00"))
         except (KeyError, TypeError, ValueError, AttributeError):
-            raise ValueError("Einmaligen Termin als ISO-Datum angeben, z. B. 2026-11-01T09:00:00+01:00.")
+            raise ValueError("Enter a one-time ISO datetime, e.g. 2026-11-01T09:00:00+01:00.")
     return result
 
 
@@ -75,7 +75,7 @@ def next_time(schedule, timezone, after):
         if date.tzinfo is None:
             date = date.replace(tzinfo=zone)
             if dt.datetime.fromtimestamp(date.timestamp(), zone).replace(tzinfo=None) != date.replace(tzinfo=None):
-                raise ValueError("Dieser lokale Zeitpunkt existiert wegen der Zeitumstellung nicht.")
+                raise ValueError("This local time does not exist because of daylight saving time.")
         return date.timestamp() if date.timestamp() > after else None
     if kind == "cron":
         expression = schedule["expression"]
@@ -93,7 +93,7 @@ def next_time(schedule, timezone, after):
         timestamp = aware.timestamp()
         if timestamp > after and dt.datetime.fromtimestamp(timestamp, zone).replace(tzinfo=None) == candidate:
             return timestamp
-    raise ValueError("Kein gültiger nächster Termin gefunden.")
+    raise ValueError("No valid next run found.")
 
 
 def preview(schedule, timezone="Europe/Berlin", count=5, after=None):
@@ -133,53 +133,53 @@ def schedule_from_text(text):
         try:
             days = [aliases[d.lower()] for d in parts[1].split(",")]
         except KeyError:
-            raise ValueError("Wochentage z. B. mon,wed,fri oder mo,mi,fr.")
+            raise ValueError("Enter weekdays, e.g. mon,wed,fri.")
         return normalize_schedule({"type": "weekly", "days": days, "time": parts[2]})
     if text.startswith("cron "):
         return normalize_schedule({"type": "cron", "expression": text[5:].strip()})
     if text.startswith("once "):
         return normalize_schedule({"type": "once", "at": text[5:].strip()})
-    raise ValueError("Zeitplan: every 2h | daily 09:00 | weekly mon,fri 09:00 | cron 0 9 * * 1-5 | once ISO-Datum")
+    raise ValueError("Schedule: every 2h | daily 09:00 | weekly mon,fri 09:00 | cron 0 9 * * 1-5 | once ISO datetime")
 
 
 def validate(values):
     unknown = set(values) - FIELDS
     if unknown:
-        raise ValueError("Unbekannte Felder: " + ", ".join(sorted(unknown)))
+        raise ValueError("Unknown fields: " + ", ".join(sorted(unknown)))
     data = {"timezone": "Europe/Berlin", "model": None, "reasoning_effort": None,
             "sandbox": "workspace-write", "context_mode": "fresh", "session_id": None,
             "timeout_minutes": 60, "enabled": True, **values}
     for name in ("name", "prompt", "cwd"):
         if not isinstance(data.get(name), str) or not data[name].strip():
-            raise ValueError(f"{name} darf nicht leer sein.")
+            raise ValueError(f"{name} must not be empty.")
     if len(data["name"]) > 200 or len(data["prompt"]) > 1000000:
-        raise ValueError("Name oder Prompt ist zu lang.")
+        raise ValueError("Name or prompt is too long.")
     path = Path(data["cwd"]).expanduser()
     if not path.is_absolute() or not path.is_dir():
-        raise ValueError("Projektordner muss ein existierender absoluter Pfad sein.")
+        raise ValueError("Project directory must be an existing absolute path.")
     data["cwd"] = str(path.resolve())
     data["schedule"] = normalize_schedule(data.get("schedule"))
     try:
         ZoneInfo(data["timezone"])
     except (KeyError, TypeError, ValueError):
-        raise ValueError("Ungültige Zeitzone, z. B. Europe/Berlin.")
+        raise ValueError("Invalid timezone, e.g. Europe/Berlin.")
     if data["sandbox"] not in ("read-only", "workspace-write"):
-        raise ValueError("Zugriff: read-only oder workspace-write.")
+        raise ValueError("Access: read-only or workspace-write.")
     if data["context_mode"] not in ("fresh", "continue"):
-        raise ValueError("Kontext: fresh oder continue.")
+        raise ValueError("Context: fresh or continue.")
     if data["session_id"] and not re.fullmatch(r"[0-9a-fA-F-]{36}", str(data["session_id"])):
-        raise ValueError("Sitzungs-ID muss eine Codex-UUID sein.")
+        raise ValueError("Session ID must be a Codex UUID.")
     for name in ("model", "reasoning_effort"):
         if data[name] == "":
             data[name] = None
         if data[name] is not None and (not isinstance(data[name], str) or len(data[name]) > 100):
-            raise ValueError(f"Ungültiges Feld: {name}")
+            raise ValueError(f"Invalid field: {name}")
     if data["reasoning_effort"] not in (None, "low", "medium", "high", "xhigh", "max"):
-        raise ValueError("Denkstufe: low, medium, high, xhigh oder max (modellabhängig).")
+        raise ValueError("Reasoning effort: low, medium, high, xhigh or max (depending on model).")
     if type(data["enabled"]) is not bool:
-        raise ValueError("enabled muss true oder false sein.")
+        raise ValueError("enabled must be true or false.")
     if isinstance(data["timeout_minutes"], bool) or not isinstance(data["timeout_minutes"], (int, float)) or not 1 <= data["timeout_minutes"] <= 1440:
-        raise ValueError("Laufzeitlimit: 1–1440 Minuten.")
+        raise ValueError("Timeout: 1–1440 minutes.")
     return data
 
 
@@ -236,7 +236,7 @@ class Store:
 
     def decode(self, row):
         if row is None:
-            raise ValueError("Schedule nicht gefunden.")
+            raise ValueError("Schedule not found.")
         data = json.loads(row["config"])
         data.update(id=row["id"], enabled=bool(row["enabled"]), deleted=bool(row["deleted"]),
                     revision=row["revision"], created_at=zoned(row["created"], data["timezone"]),
@@ -261,7 +261,7 @@ class Store:
         now = time.time()
         next_run = next_time(data["schedule"], data["timezone"], now) if data["enabled"] else None
         if data["enabled"] and next_run is None:
-            raise ValueError("Der einmalige Termin liegt in der Vergangenheit.")
+            raise ValueError("The one-time date is in the past.")
         job_id = str(uuid.uuid4())
         with self.transaction() as db:
             if request_key:
@@ -275,20 +275,20 @@ class Store:
 
     def update(self, job_id, changes, expected_revision=None):
         if not isinstance(changes, dict) or not changes or set(changes) - FIELDS:
-            raise ValueError("Änderungen enthalten keine gültigen Schedule-Felder.")
+            raise ValueError("Changes contain no valid schedule fields.")
         with self.transaction() as db:
             row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
             current = self.decode(row)
             if current["deleted"]:
-                raise ValueError("Schedule ist im Archiv. Zuerst wiederherstellen.")
+                raise ValueError("Schedule is archived. Restore it first.")
             if expected_revision is not None and current["revision"] != expected_revision:
-                raise ValueError("Schedule wurde inzwischen geändert. Neu laden, dann erneut speichern.")
+                raise ValueError("Schedule has changed. Reload, then save again.")
             data = validate({**{key: current[key] for key in FIELDS}, **changes})
             due = row["next_run"]
             if any(data[key] != current[key] for key in ("schedule", "timezone", "enabled")):
                 due = next_time(data["schedule"], data["timezone"], time.time()) if data["enabled"] else None
                 if data["enabled"] and due is None:
-                    raise ValueError("Der einmalige Termin liegt in der Vergangenheit.")
+                    raise ValueError("The one-time date is in the past.")
             db.execute("UPDATE jobs SET config=?,enabled=?,next_run=?,updated=?,revision=revision+1 WHERE id=?",
                        (json.dumps(data, ensure_ascii=False), int(data["enabled"]), due, time.time(), job_id))
         return self.get(job_id)
@@ -307,7 +307,7 @@ class Store:
                 return self.enqueue(job_id, source, transaction, scheduled_for)
         job = self.decode(db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone())
         if job["deleted"]:
-            raise ValueError("Archivierte Schedules können nicht gestartet werden.")
+            raise ValueError("Archived schedules cannot be run.")
         existing = db.execute("SELECT id FROM runs WHERE job_id=? AND status IN ('queued','running')", (job_id,)).fetchone()
         if existing:
             return {"run_id": existing["id"], "already_pending": True}
@@ -330,7 +330,7 @@ class Store:
         with self.connect() as db:
             row = db.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone()
         if row is None:
-            raise ValueError("Lauf nicht gefunden.")
+            raise ValueError("Run not found.")
         result = dict(row)
         result["snapshot"] = json.loads(result["snapshot"])
         return result
@@ -354,7 +354,7 @@ class Store:
         with self.transaction() as db:
             row = db.execute("SELECT status FROM runs WHERE id=?", (run_id,)).fetchone()
             if row is None:
-                raise ValueError("Lauf nicht gefunden.")
+                raise ValueError("Run not found.")
             if row["status"] == "queued":
                 db.execute("UPDATE runs SET status='cancelled',finished=? WHERE id=?", (time.time(), run_id))
             elif row["status"] == "running":

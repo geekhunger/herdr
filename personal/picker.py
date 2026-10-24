@@ -45,17 +45,17 @@ def render(tabs, selected):
     rows = max(1, height - 4)
     start = max(0, min(selected - rows // 2, len(tabs) - rows))
     lines = [
-        "↑/↓ oder Tab: navigieren · Enter: öffnen",
-        "Zahl 1–9: direkt öffnen · Esc: abbrechen",
+        "↑/↓ or Tab: navigate · Enter: open",
+        "Number 1–9: open directly · Esc: cancel",
         "",
     ]
     for index in range(start, min(start + rows, len(tabs))):
         tab = tabs[index]
         label = "".join(c for c in tab["label"] if c.isprintable())
         marker = "›" if index == selected else " "
-        active = " (aktuell)" if tab["focused"] else ""
+        active = " (current)" if tab["focused"] else ""
         lines.append(f"{marker} {tab['number']:>2}  {label}{active}")
-    lines.append(f"Auswahl {selected + 1} von {len(tabs)}")
+    lines.append(f"Selection {selected + 1} of {len(tabs)}")
     sys.stdout.write("\x1b[?25l\x1b[2J\x1b[H" + "\r\n".join(line[:width] for line in lines))
     sys.stdout.flush()
 
@@ -76,13 +76,13 @@ def load_items(binary, kind, workspace):
             workspaces.get(agent["workspace_id"], {}).get("number", 999999),
             tabs.get(agent["tab_id"], {}).get("number", 999999),
         ))
-        states = {"blocked": "wartet", "working": "arbeitet", "done": "fertig",
-                  "idle": "bereit", "unknown": "unklar"}
+        states = {"blocked": "waiting", "working": "working", "done": "done",
+                  "idle": "ready", "unknown": "unknown"}
         items = []
         for number, agent in enumerate(agents, 1):
             space = workspaces.get(agent["workspace_id"], {})
             tab = tabs.get(agent["tab_id"], {})
-            state = states.get(agent.get("agent_status"), "unklar")
+            state = states.get(agent.get("agent_status"), "unknown")
             name = agent.get("name") or agent.get("terminal_title_stripped") or agent["agent"]
             location = f"{space.get('number', '?')}:{space.get('label', agent['workspace_id'])}"
             label = f"{state} · {name[:18]} · {location} / {tab.get('label', agent['tab_id'])}"
@@ -108,7 +108,7 @@ def main():
     binary = os.environ.get("HERDR_BIN_PATH") or shutil.which("herdr") or "herdr"
     if (kind == "tab" and not workspace) or not sys.stdin.isatty():
         letter = {"workspace": "W", "agent": "A", "tab": "T"}[kind]
-        print(f"Diese Auswahl bitte mit Ctrl+F, dann {letter} in Herdr öffnen.")
+        print(f"Open this picker in Herdr with Ctrl+F, then {letter}.")
         return 1
 
     fd = sys.stdin.fileno()
@@ -118,7 +118,8 @@ def main():
             tty.setcbreak(fd, termios.TCSANOW)
         tabs = load_items(binary, kind, workspace)
         if not tabs:
-            print(f"Keine aktiven Einträge in der {title}-Auswahl.\nEsc oder Enter: schließen.", flush=True)
+            sys.stdout.write("\x1b[2J\x1b[H")
+            sys.stdout.flush()
             while read_key(fd) not in (b"", b"\x1b", b"\r", b"\n", b"\x03", b"\x04"):
                 pass
             return 0
@@ -146,7 +147,7 @@ def main():
     except KeyboardInterrupt:
         return 0
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
-        print(f"\n{title}-Auswahl fehlgeschlagen: {type(error).__name__}", flush=True)
+        print(f"\n{title} selection failed: {type(error).__name__}", flush=True)
         os.read(fd, 1)
         return 1
     finally:

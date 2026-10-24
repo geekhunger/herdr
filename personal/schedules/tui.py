@@ -39,7 +39,7 @@ def viewer(screen, title, text):
             lines += textwrap.wrap(paragraph, max(10, width - 4), replace_whitespace=False) or [""]
         screen.erase()
         put(screen, 0, 1, title, curses.A_BOLD)
-        put(screen, 1, 1, "↑/↓ oder Bild↑/↓: lesen · Esc: zurück", curses.A_DIM)
+        put(screen, 1, 1, "↑/↓ or Page Up/Down: scroll · Esc: back", curses.A_DIM)
         offset = min(max(0, offset), max(0, len(lines) - max(1, height - 4)))
         for row, line in enumerate(lines[offset:offset + max(1, height - 4)], 3):
             put(screen, row, 1, line)
@@ -58,7 +58,7 @@ def viewer(screen, title, text):
 
 
 def message(screen, text):
-    viewer(screen, "Hinweis", text)
+    viewer(screen, "Notice", text)
 
 
 def edit_text(screen, title, text, multiline=False, hint=""):
@@ -88,8 +88,8 @@ def edit_text(screen, title, text, multiline=False, hint=""):
             top = max(0, cursor_row - available + 1)
             screen.erase()
             put(screen, 0, 1, title, curses.A_BOLD)
-            put(screen, 1, 1, "Ctrl+S: übernehmen · Esc: zurück", curses.A_DIM)
-            put(screen, 2, 1, "Enter: neue Zeile" if multiline else "Enter: übernehmen", curses.A_DIM)
+            put(screen, 1, 1, "Ctrl+S: apply · Esc: back", curses.A_DIM)
+            put(screen, 2, 1, "Enter: new line" if multiline else "Enter: apply", curses.A_DIM)
             put(screen, 3, 1, hint, curses.A_DIM)
             for display_row, line in enumerate(lines[top:top + available], 4):
                 put(screen, display_row, 2, line)
@@ -155,11 +155,11 @@ def edit_text(screen, title, text, multiline=False, hint=""):
         screen.timeout(1000)
 
 
-FORM = [("name", "Name"), ("cwd", "Projektordner"), ("schedule", "Zeitplan"),
-        ("timezone", "Zeitzone"), ("model", "Modell (leer = CLI-Standard)"),
-        ("reasoning_effort", "Denkstufe (leer = CLI-Standard)"), ("context_mode", "Kontext: fresh / continue"),
-        ("session_id", "Sitzungs-ID (optional)"), ("timeout_minutes", "Laufzeitlimit in Minuten"),
-        ("sandbox", "Zugriff"), ("enabled", "Aktiv"), ("prompt", "Prompt (mehrzeilig)")]
+FORM = [("name", "Name"), ("cwd", "Project directory"), ("schedule", "Schedule"),
+        ("timezone", "Timezone"), ("model", "Model (empty = CLI default)"),
+        ("reasoning_effort", "Reasoning effort (empty = CLI default)"), ("context_mode", "Context: fresh / continue"),
+        ("session_id", "Session ID (optional)"), ("timeout_minutes", "Timeout in minutes"),
+        ("sandbox", "Access"), ("enabled", "Enabled"), ("prompt", "Prompt (multiline)")]
 
 
 def form(screen, store, job=None):
@@ -171,21 +171,21 @@ def form(screen, store, job=None):
         initial.update({field: job[field] for field in FIELDS})
     values = {field: str(initial[field]) if initial[field] is not None else "" for field, _ in FORM}
     values["schedule"] = schedule_text(initial["schedule"])
-    values["enabled"] = "ja" if initial["enabled"] else "nein"
+    values["enabled"] = "yes" if initial["enabled"] else "no"
     selected = 0
     while True:
         height, width = screen.getmaxyx()
         screen.erase()
-        put(screen, 0, 1, "Schedule bearbeiten" if job else "Neuer Schedule", curses.A_BOLD)
-        put(screen, 1, 1, "↑/↓/Tab: Feld · Enter: ändern", curses.A_DIM)
-        put(screen, 2, 1, "Ctrl+S: speichern · Esc: zurück", curses.A_DIM)
+        put(screen, 0, 1, "Edit schedule" if job else "New schedule", curses.A_BOLD)
+        put(screen, 1, 1, "↑/↓/Tab: field · Enter: edit", curses.A_DIM)
+        put(screen, 2, 1, "Ctrl+S: save · Esc: back", curses.A_DIM)
         rows = max(1, height - 7)
         top = max(0, min(selected - rows + 1, len(FORM) - rows))
         for row, index in enumerate(range(top, min(top + rows, len(FORM))), 4):
             field, label = FORM[index]
             summary = values[field].replace("\n", " ↵ ")
             put(screen, row, 1, f"{label}: {summary}", curses.A_REVERSE if index == selected else 0)
-        put(screen, height - 2, 1, "'Aktiv' mit Enter umschalten.", curses.A_DIM)
+        put(screen, height - 2, 1, "Press Enter to toggle 'Enabled'.", curses.A_DIM)
         screen.refresh()
         event = key(screen)
         if event in ("\x1b", "\x03"):
@@ -197,7 +197,7 @@ def form(screen, store, job=None):
         elif is_enter(event):
             field, label = FORM[selected]
             if field == "enabled":
-                values[field] = "nein" if values[field] == "ja" else "ja"
+                values[field] = "no" if values[field] == "yes" else "yes"
                 continue
             if field == "context_mode":
                 values[field] = "continue" if values[field] == "fresh" else "fresh"
@@ -207,9 +207,9 @@ def form(screen, store, job=None):
                 continue
             hint = ""
             if field == "schedule":
-                hint = "every 2h | daily 09:00 | weekly mon,fri 09:00 | cron 0 9 * * 1-5 | once ISO-Datum"
+                hint = "every 2h | daily 09:00 | weekly mon,fri 09:00 | cron 0 9 * * 1-5 | once ISO datetime"
             elif field == "reasoning_effort":
-                hint = "low · medium · high · xhigh · max (modellabhängig)"
+                hint = "low · medium · high · xhigh · max (depending on model)"
             answer = edit_text(screen, label, values[field], field == "prompt", hint)
             if answer is not None:
                 values[field] = answer
@@ -217,7 +217,7 @@ def form(screen, store, job=None):
             try:
                 data = dict(values)
                 data["schedule"] = schedule_from_text(values["schedule"])
-                data["enabled"] = values["enabled"] == "ja"
+                data["enabled"] = values["enabled"] == "yes"
                 data["timeout_minutes"] = float(values["timeout_minutes"])
                 for field in ("model", "reasoning_effort", "session_id"):
                     data[field] = values[field] or None
@@ -236,17 +236,15 @@ def run_history(screen, store, job):
         runs = store.runs(job["id"])
         screen.erase()
         height, width = screen.getmaxyx()
-        put(screen, 0, 1, "Läufe: " + job["name"], curses.A_BOLD)
-        put(screen, 1, 1, "↑/↓: Auswahl · Enter: Ergebnis", curses.A_DIM)
-        put(screen, 2, 1, "X: Lauf stoppen · Esc: zurück", curses.A_DIM)
+        put(screen, 0, 1, "Runs: " + job["name"], curses.A_BOLD)
+        put(screen, 1, 1, "↑/↓: select · Enter: result", curses.A_DIM)
+        put(screen, 2, 1, "X: stop run · Esc: back", curses.A_DIM)
         selected = max(0, min(selected, len(runs) - 1))
         top = max(0, selected - max(1, height - 6) + 1)
         for row, index in enumerate(range(top, min(len(runs), top + max(1, height - 6))), 4):
             run = runs[index]
             date = zoned(run["started"] or run["requested"], job["timezone"])
             put(screen, row, 1, f"{date}  {run['status']}  {run['source']}", curses.A_REVERSE if index == selected else 0)
-        if not runs:
-            put(screen, 4, 1, "Noch keine Läufe.")
         screen.refresh()
         event = key(screen)
         if event in ("\x1b", "\x03"):
@@ -257,11 +255,11 @@ def run_history(screen, store, job):
             selected = (selected - 1) % len(runs)
         elif is_enter(event) and runs:
             result = store.result(runs[selected]["id"], 60000)
-            text = (f"Status: {result['status']}\nLauf-ID: {result['id']}\n"
-                    f"Fehler: {result['error'] or '-'}\nSitzung: {result['session_id'] or '-'}\n\n"
-                    f"ERGEBNIS\n{result['answer'] or '(Noch keine Antwort)'}\n\n"
-                    f"FEHLERPROTOKOLL\n{result['stderr']}\n\nEREIGNISSE\n{result['events']}")
-            viewer(screen, "Laufergebnis", text)
+            text = (f"Status: {result['status']}\nRun ID: {result['id']}\n"
+                    f"Error: {result['error'] or '-'}\nSession: {result['session_id'] or '-'}\n\n"
+                    f"RESULT\n{result['answer'] or '(No answer yet)'}\n\n"
+                    f"ERROR LOG\n{result['stderr']}\n\nEVENTS\n{result['events']}")
+            viewer(screen, "Run result", text)
         elif event in ("x", "X") and runs:
             store.cancel(runs[selected]["id"])
 
@@ -271,14 +269,14 @@ def details(screen, store, job):
         times = "\n".join(preview(job["schedule"], job["timezone"]))
     except Exception as error:
         times = str(error)
-    text = (f"Name: {job['name']}\nID: {job['id']}\nAktiv: {job['enabled']}\n"
-            f"Projekt: {job['cwd']}\nZeitplan: {schedule_text(job['schedule'])}\n"
-            f"Zeitzone: {job['timezone']}\nNächster tatsächlicher Lauf: {job['next_run_at'] or '-'}\n"
-            f"Modell: {job['model'] or 'CLI-Standard'}\nDenkstufe: {job['reasoning_effort'] or 'CLI-Standard'}\n"
-            f"Kontext: {job['context_mode']}\nSitzung: {job['session_id'] or '-'}\n"
-            f"Zugriff: {job['sandbox']}\nLaufzeitlimit: {job['timeout_minutes']} Minuten\n\n"
-            f"PROMPT\n{job['prompt']}\n\nVORSCHAU DES ZEITPLANS\n{times}")
-    viewer(screen, "Schedule-Details", text)
+    text = (f"Name: {job['name']}\nID: {job['id']}\nEnabled: {job['enabled']}\n"
+            f"Project: {job['cwd']}\nSchedule: {schedule_text(job['schedule'])}\n"
+            f"Timezone: {job['timezone']}\nNext scheduled run: {job['next_run_at'] or '-'}\n"
+            f"Model: {job['model'] or 'CLI default'}\nReasoning effort: {job['reasoning_effort'] or 'CLI default'}\n"
+            f"Context: {job['context_mode']}\nSession: {job['session_id'] or '-'}\n"
+            f"Access: {job['sandbox']}\nTimeout: {job['timeout_minutes']} minutes\n\n"
+            f"PROMPT\n{job['prompt']}\n\nSCHEDULE PREVIEW\n{times}")
+    viewer(screen, "Schedule details", text)
 
 
 def ui(screen, store):
@@ -295,32 +293,28 @@ def ui(screen, store):
         health = store.health()
         height, width = screen.getmaxyx()
         screen.erase()
-        title = "Schedules · " + ("Dienst läuft" if health["healthy"] else "DIENST NICHT ERREICHBAR")
+        title = "Schedules · " + ("Service running" if health["healthy"] else "SERVICE UNAVAILABLE")
         if archived:
-            title += " · Archiv"
+            title += " · Archive"
         put(screen, 0, 1, title, curses.A_BOLD)
-        put(screen, 1, 1, "N: neu · E: ändern · Enter: Details", curses.A_DIM)
-        put(screen, 2, 1, "Leertaste: Pause · R: starten · L: Läufe", curses.A_DIM)
-        put(screen, 3, 1, "D: archivieren · A: Archiv · U: zurück", curses.A_DIM)
-        put(screen, 4, 1, "↑/↓/Tab: Auswahl · Esc: zurück · ?: Hilfe", curses.A_DIM)
+        put(screen, 1, 1, "N: new · E: edit · Enter: details", curses.A_DIM)
+        put(screen, 2, 1, "Space: pause/resume · R: run · L: history", curses.A_DIM)
+        put(screen, 3, 1, "D: archive · A: archive view · U: restore", curses.A_DIM)
+        put(screen, 4, 1, "↑/↓/Tab: select · Esc: back · ?: help", curses.A_DIM)
         selected = max(0, min(selected, len(jobs) - 1))
         rows = max(1, (height - 9) // 3)
         top = max(0, min(selected - rows + 1, len(jobs) - rows))
         for offset, index in enumerate(range(top, min(len(jobs), top + rows))):
             row = 6 + 3 * offset
             job = jobs[index]
-            active = "AKTIV" if job["enabled"] else "PAUSE"
-            last = job["last_run"]["status"] if job["last_run"] else "noch kein Lauf"
+            active = "ON" if job["enabled"] else "PAUSED"
+            last = job["last_run"]["status"] if job["last_run"] else "no runs yet"
             due = (job["next_run_at"] or "-").replace("T", " ")
             put(screen, row, 1, f"{active:5}  {job['name']}",
                 curses.A_REVERSE if index == selected else 0)
             put(screen, row + 1, 1, f"  {schedule_text(job['schedule'])} · {last}", curses.A_DIM)
-            put(screen, row + 2, 1, f"  Nächster Lauf: {due}", curses.A_DIM)
-        if not jobs:
-            put(screen, 6, 1, "Keine Schedules im Archiv." if archived else "Noch keine eigenen Schedules.")
-            if not archived:
-                put(screen, 7, 1, "Mit N anlegen oder per MCP erstellen.")
-        put(screen, height - 2, 1, "Mac an · Hintergrunddienst erforderlich", curses.A_DIM)
+            put(screen, row + 2, 1, f"  Next run: {due}", curses.A_DIM)
+        put(screen, height - 2, 1, "Computer must be on · Background service required", curses.A_DIM)
         screen.refresh()
         event = key(screen)
         try:
@@ -335,18 +329,18 @@ def ui(screen, store):
             elif event in ("a", "A"):
                 archived, selected = not archived, 0
             elif event == "?":
-                viewer(screen, "Bedienung", "Ctrl+F → C öffnet diese Verwaltung.\n\n"
-                       "N: neuer Schedule. Pfeile/Tab wählen ein Feld. Enter bearbeitet es.\n"
-                       "Prompt: mehrzeilig; Ctrl+S übernimmt den Text. Ctrl+S im Formular speichert den Job.\n"
-                       "Zeitplan: every 2h; daily 09:15; weekly mon,wed,fri 09:00; cron 0 9 * * 1-5; once ISO-Datum.\n"
-                       "Neue Jobs sind manuell zunächst pausiert; Aktiv im Formular oder Leertaste schaltet sie ein.\n"
-                       "fresh startet jeden Lauf neu. continue setzt eine eigene Codex-Sitzung fort.\n"
-                       "Leer gelassenes Modell und Denkstufe verwenden die Codex-CLI-Standards.\n"
-                       "R startet einmal manuell; L zeigt echte Antworten und Fehler. X in der Laufansicht stoppt einen Lauf.\n"
-                       "Verpasste Wiederholungen werden zu einem nachgeholten Lauf zusammengefasst.\n"
-                       "Ein Job läuft nie mehrfach gleichzeitig; insgesamt arbeitet ein Job nach dem anderen.\n"
-                       "D verschiebt ins Archiv. A zeigt das Archiv; U stellt pausiert wieder her.\n"
-                       "Der launchd-Dienst muss laufen. Mac muss eingeschaltet, Benutzer angemeldet und verfügbar sein.")
+                viewer(screen, "Help", "Ctrl+F → C opens this manager.\n\n"
+                       "N: new schedule. Arrows/Tab select a field. Enter edits it.\n"
+                       "Prompt: multiline; Ctrl+S applies the text. Ctrl+S in the form saves the job.\n"
+                       "Schedule: every 2h; daily 09:15; weekly mon,wed,fri 09:00; cron 0 9 * * 1-5; once ISO datetime.\n"
+                       "New jobs start paused; use Enabled in the form or Space to enable them.\n"
+                       "fresh starts a new conversation each run. continue resumes the job’s Codex session.\n"
+                       "Empty Model and Reasoning effort use the Codex CLI defaults.\n"
+                       "R runs once manually; L shows answers and errors. X in run history stops a run.\n"
+                       "Missed repetitions are combined into one catch-up run.\n"
+                       "A job never overlaps itself; jobs run one at a time.\n"
+                       "D archives. A shows the archive; U restores a job paused.\n"
+                       "The background service must be running. The computer must be on and the user session available.")
             elif jobs:
                 job = jobs[selected]
                 if is_enter(event):
@@ -357,12 +351,12 @@ def ui(screen, store):
                     store.update(job["id"], {"enabled": not job["enabled"]}, expected_revision=job["revision"])
                 elif event in ("r", "R") and not archived:
                     queued = store.enqueue(job["id"])
-                    message(screen, "Lauf bereits vorgemerkt/aktiv." if queued["already_pending"] else "Lauf in Warteschlange. Status und Ergebnis findest du mit L.\nDie Einreihung ist noch kein erfolgreiches Ergebnis.")
+                    message(screen, "Run already queued/running." if queued["already_pending"] else "Run queued. Press L to view status and results.\nA queued run is not a successful result.")
                 elif event in ("l", "L"):
                     run_history(screen, store, job)
                 elif event in ("d", "D") and not archived:
-                    answer = edit_text(screen, "Archivieren? JA eingeben", "")
-                    if answer and answer.upper() == "JA":
+                    answer = edit_text(screen, "Archive? Type YES", "")
+                    if answer and answer.upper() == "YES":
                         store.archive(job["id"])
                 elif event in ("u", "U") and archived:
                     store.archive(job["id"], restore=True)

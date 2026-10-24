@@ -143,7 +143,7 @@ pub(super) fn render(buffer: &mut Buffer, area: Rect, data: &Schedules, palette:
     if !data.healthy {
         line(
             y,
-            " ! Dienst prüfen · C",
+            " ! Check service · C",
             Style::default().fg(palette.yellow),
         );
         y += 1;
@@ -153,9 +153,6 @@ pub(super) fn render(buffer: &mut Buffer, area: Rect, data: &Schedules, palette:
         .as_ref()
         .map(|snapshot| snapshot.jobs.as_slice())
         .unwrap_or_default();
-    if jobs.is_empty() && y < footer {
-        line(y, " Keine Schedules", dim);
-    }
     let capacity = usize::from(footer.saturating_sub(y) / 2);
     let total = data.snapshot.as_ref().map_or(0, |snapshot| snapshot.total);
     for job in jobs.iter().take(capacity) {
@@ -169,18 +166,15 @@ pub(super) fn render(buffer: &mut Buffer, area: Rect, data: &Schedules, palette:
         };
         let name: String = job.name.chars().filter(|c| !c.is_control()).collect();
         line(y, &format!(" {icon} {name}"), Style::default().fg(color));
-        let state = if job.enabled { "an" } else { "aus" };
+        let state = if job.enabled { "on" } else { "off" };
         let next: String = job.next.chars().filter(|c| !c.is_control()).collect();
         line(y + 1, &format!("   {state} · {next}"), dim);
         y += 2;
     }
     let more = total.saturating_sub(capacity);
-    let footer_text = if more > 0 {
-        format!(" +{more} · Prefix+C öffnen")
-    } else {
-        " Prefix+C verwalten".to_owned()
-    };
-    line(footer, &footer_text, dim);
+    if more > 0 {
+        line(footer, &format!(" +{more}"), dim);
+    }
 }
 
 #[cfg(test)]

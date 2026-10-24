@@ -33,7 +33,7 @@ impl ClientShellState {
             return true;
         }
         if !self.active_endpoint_id.is_local() {
-            self.set_endpoint_error("Ctrl+L benötigt den lokalen Codex-Editorhelfer");
+            self.set_endpoint_error("Ctrl+L requires the local Codex editor helper");
             outcome.repaint = true;
             return true;
         }
@@ -45,7 +45,7 @@ impl ClientShellState {
         let ready = root.join(format!("{digest:x}.ready"));
         let result = (|| -> Result<(), String> {
             if std::fs::metadata(&ready).map_err(|e| e.to_string())?.len() > 4096 {
-                return Err("Ungültiger Editorhelfer-Status".into());
+                return Err("Invalid editor helper status".into());
             }
             let data = std::fs::read(&ready).map_err(|e| e.to_string())?;
             let ready: Ready = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
@@ -53,7 +53,7 @@ impl ClientShellState {
                 || !ready.token.bytes().all(|b| b.is_ascii_hexdigit())
                 || !crate::platform::process_exists(ready.pid)
             {
-                return Err("Editorhelfer ist nicht aktiv".into());
+                return Err("Editor helper is not active".into());
             }
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -68,9 +68,7 @@ impl ClientShellState {
             Ok(())
         })();
         if result.is_err() {
-            self.set_endpoint_error(
-                "Ctrl+L: Codex einmal mit dem aktualisierten Herdr-Profil neu starten",
-            );
+            self.set_endpoint_error("Ctrl+L: restart Codex with the updated Herdr profile");
             outcome.repaint = true;
             return true;
         }

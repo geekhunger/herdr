@@ -29,7 +29,7 @@ def clean_environment():
 def codex_command(job, directory, binary=None):
     binary = binary or os.environ.get("HERDR_SCHEDULES_CODEX") or shutil.which("codex", path=clean_environment()["PATH"])
     if not binary:
-        raise ValueError("Codex CLI fehlt im PATH des Schedule-Dienstes.")
+        raise ValueError("Codex CLI is missing from the scheduler PATH.")
     command = [binary, "--no-daemon", "-a", "never", "-s", job["sandbox"]]
     if job["model"]:
         command += ["-m", job["model"]]
@@ -68,7 +68,7 @@ def notify(job, status):
     try:
         subprocess.run([shutil.which("herdr") or "herdr", "notification", "show",
                         f"Schedule: {job['name']}", "--body",
-                        f"{status} · Ergebnis: Ctrl+F → C → Läufe", "--sound",
+                        f"{status} · Results: Ctrl+F → C → history", "--sound",
                         "done" if status == "succeeded" else "request"],
                        env=clean_environment(), timeout=3, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL)
@@ -113,11 +113,11 @@ def worker(store, run_id):
             deadline = time.time() + job["timeout_minutes"] * 60
             while process.poll() is None:
                 if stopped[0] or store.run(run_id)["cancel_requested"]:
-                    status, error = "cancelled", "Lauf abgebrochen."
+                    status, error = "cancelled", "Run cancelled."
                     terminate(process)
                     break
                 if time.time() > deadline:
-                    status, error = "timed_out", "Laufzeitlimit erreicht."
+                    status, error = "timed_out", "Run timed out."
                     terminate(process)
                     break
                 time.sleep(0.3)
@@ -135,9 +135,9 @@ def worker(store, run_id):
                     event_error = str(event.get("error", "Codex turn failed"))
         if error is None:
             if return_code != 0 or event_error:
-                status, error = "failed", event_error or f"Codex endete mit Exit-Code {return_code}."
+                status, error = "failed", event_error or f"Codex exited with code {return_code}."
             elif not (directory / "answer.txt").exists() or not (directory / "answer.txt").read_text(encoding="utf-8", errors="replace").strip():
-                status, error = "failed", "Codex lieferte keine abschließende Antwort; siehe Protokoll."
+                status, error = "failed", "Codex returned no final answer; see the log."
             else:
                 status = "succeeded"
     except Exception as exception:
@@ -187,7 +187,7 @@ def tick(store):
         for row in active:
             if not worker_alive(store, row):
                 db.execute("UPDATE runs SET status='interrupted',finished=?,error=? WHERE id=?",
-                           (now, "Worker wurde beendet; Lauf wird nicht automatisch doppelt gestartet.", row["id"]))
+                           (now, "Worker stopped; the run will not be duplicated automatically.", row["id"]))
         if db.execute("SELECT count(*) FROM runs WHERE status='running'").fetchone()[0] >= 1:
             return None
         row = db.execute("SELECT * FROM runs WHERE status='queued' ORDER BY requested LIMIT 1").fetchone()
@@ -201,12 +201,12 @@ def daemon(store):
     import faulthandler
     if hasattr(signal, "SIGUSR1"):
         faulthandler.register(signal.SIGUSR1)
-    print(f"Schedule-Dienst gestartet: PID {os.getpid()}", flush=True)
+    print(f"Scheduler started: PID {os.getpid()}", flush=True)
     lock = (store.root / "daemon.lock").open("w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        raise SystemExit("Schedule-Dienst läuft bereits.")
+        raise SystemExit("Scheduler is already running.")
     stopping = [False]
     def stop(_signum, _frame):
         stopping[0] = True

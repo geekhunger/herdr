@@ -39,7 +39,7 @@ def launch(arguments):
         arguments = arguments[1:]
     real = shutil.which("codex")
     if not real:
-        raise SystemExit("Codex CLI nicht im PATH gefunden.")
+        raise SystemExit("Codex CLI not found in PATH.")
     pane, socket = os.environ.get("HERDR_PANE_ID"), os.environ.get("HERDR_SOCKET_PATH")
     if pane and socket:
         token = uuid.uuid4().hex

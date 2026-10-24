@@ -26,7 +26,7 @@ switch_tab = ""
 key = "prefix+t"
 type = "popup"
 command = "@PICKER@"
-description = "Tab auswählen: Pfeiltasten oder Zahl"
+description = "Select tab: arrow keys or number"
 width = 60
 height = 16
 
@@ -34,7 +34,7 @@ height = 16
 key = "prefix+w"
 type = "popup"
 command = "@PICKER@ workspace"
-description = "Workspace auswählen: Pfeiltasten oder Zahl"
+description = "Select workspace: arrow keys or number"
 width = 60
 height = 16
 
@@ -42,7 +42,7 @@ height = 16
 key = "prefix+a"
 type = "popup"
 command = "@PICKER@ agent"
-description = "Agent auswählen: Pfeiltasten oder Zahl"
+description = "Select agent: arrow keys or number"
 width = 72
 height = 16
 
@@ -51,6 +51,6 @@ height = 16
 key = "prefix+c"
 type = "popup"
 command = "@SCHEDULES@ ui"
-description = "Schedules: Zeitplan, Prompt und Ergebnisse"
+description = "Schedules: timing, prompts and results"
 width = "90%"
 height = "90%"
